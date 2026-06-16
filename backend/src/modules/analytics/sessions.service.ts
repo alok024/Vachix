@@ -20,6 +20,7 @@ import {
 } from '../../infra/queue/dispatcher';
 import type { FeedbackItem } from '../ai/ai.memory';
 import { maybeRewardReferrer } from '../growth/referral.service';
+import { incrementAIUsage }   from '../user/user.service';
 
 const log = logger.child({ module: 'sessions' });
 
@@ -214,14 +215,20 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
   const newBest     = updatedStats.best_score;
   const newStreak   = updatedStats.streak;
 
-  // 5. Reward referrer if this is the user's first session (non-fatal)
+  // 5. Increment AI usage quota — once per completed session, not per message.
+  //    Non-fatal: a failed counter must never block the session save result.
+  incrementAIUsage(userId).catch(err =>
+    log.warn('incrementAIUsage failed (non-fatal)', { userId, error: (err as Error).message })
+  );
+
+  // 6. Reward referrer if this is the user's first session (non-fatal)
   if (newSessions === 1) {
     maybeRewardReferrer(userId).catch(err =>
       log.warn('maybeRewardReferrer failed (non-fatal)', { error: err })
     );
   }
 
-  // 5b. Score history for graph (non-fatal)
+  // 7. Score history for graph (non-fatal)
   db.addScoreHistory({
     user_id:         userId,
     session_id:      session.id,
@@ -234,7 +241,7 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
   // With Redis    → queued with 3× retry + exponential backoff
   // Without Redis → inline fire-and-forget (dev / degraded mode)
 
-  // 6. AI memory — persist recurring mistakes from this session
+  // 8. AI memory — persist recurring mistakes from this session
   if (feedbacks && feedbacks.length > 0) {
     dispatchPersistMistakes(
       userId,
@@ -243,7 +250,7 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
     ).catch(() => {/* dispatcher logs internally */});
   }
 
-  // 7. Weak areas — recompute topic scores for the dashboard
+  // 9. Weak areas — recompute topic scores for the dashboard
   dispatchRecomputeWeakAreas(userId)
     .catch(() => {/* dispatcher logs internally */});
 
