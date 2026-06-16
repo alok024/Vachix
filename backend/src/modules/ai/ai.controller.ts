@@ -251,9 +251,6 @@ export const handleAIStream = asyncHandler(async (req: Request, res: Response) =
           sendEvent('token', { text: word });
           await new Promise(r => setTimeout(r, 8)); // perceptible live-typing effect
         }
-        if (!isFreeCall) {
-          await incrementAIUsage(user.id);
-        }
         sendEvent('done', {
           provider: cached.provider,
           cached: true,
@@ -280,10 +277,6 @@ export const handleAIStream = asyncHandler(async (req: Request, res: Response) =
 
     if (cacheable && fullText.trim()) {
       await setCachedAIResponse(messages, { text: fullText, provider }, cacheCtx).catch(() => {});
-    }
-
-    if (!isFreeCall) {
-      await incrementAIUsage(user.id);
     }
 
     aiLogger.debug('AI stream completed', {
