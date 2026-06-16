@@ -49,9 +49,16 @@ function PostHogInit() {
 }
 
 // ── Theme applier ─────────────────────────────────────────────────
+// BUG FIX: globals.css uses [data-theme="dark"] / [data-theme="light"] selectors,
+// NOT .dark / .light class selectors. The old code only toggled classes, so CSS
+// custom properties (--bg, --text1, etc.) never applied. Now we set the
+// data-theme attribute so all theme variables work correctly.
 function ThemeApplier() {
   const isDark = useUIStore((s) => s.isDark);
   useEffect(() => {
+    const theme = isDark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    // Keep class toggle for any Tailwind dark: utilities
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.classList.toggle('light', !isDark);
   }, [isDark]);
