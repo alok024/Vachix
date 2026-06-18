@@ -5,8 +5,13 @@ import React from 'react';
 /**
  * app/(auth)/register/page.tsx
  *
- * Register page — same ambient background and design tokens as the landing
- * and login pages. Theme-aware. CSS vars throughout.
+ * Register page — after successful registration the user is sent to
+ * /verify-email-sent (NOT /dashboard) because the account requires
+ * email verification before login is permitted.
+ *
+ * Previous bug: router.push('/dashboard') after register caused an
+ * immediate middleware redirect back to /login because the new account
+ * has email_verified=false and the backend rejects login with 403.
  */
 
 import { useState, useEffect } from 'react';
@@ -56,10 +61,13 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await register.mutateAsync({ name, email, password });
-      router.push('/dashboard');
-    } catch (_) {}
+    // FIX: No try/catch here — let React Query set isError so the error
+    // banner above the form renders correctly.
+    // FIX: Redirect to /verify-email-sent, NOT /dashboard. The account
+    // requires email verification; going to /dashboard would immediately
+    // bounce back to /login because the backend rejects unverified logins.
+    await register.mutateAsync({ name, email, password });
+    router.push(`/verify-email-sent?email=${encodeURIComponent(email)}`);
   }
 
   return (

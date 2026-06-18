@@ -5,10 +5,14 @@ import React from 'react';
 /**
  * app/(auth)/login/page.tsx
  *
- * Login page — visual continuation of the landing page.
- * Uses the same CSS vars (--violet, --gold, --bg, etc.) and ambient
- * orb/grid recipe so the transition from marketing → app feels seamless.
- * Fully theme-aware: works in both dark and light modes.
+ * Login page.
+ *
+ * FIX: redirect param was 'redirect' but Next.js middleware sets ?next=
+ * causing the post-login redirect to always go to /dashboard instead of
+ * the originally-requested protected page.
+ *
+ * FIX: removed try/catch(_){} swallowing login errors — React Query's
+ * isError state now surfaces them correctly.
  */
 
 import { useState, useEffect, Suspense } from 'react';
@@ -18,7 +22,6 @@ import { useLogin } from '@/hooks/queries';
 import { extractErrorMessage } from '@/lib/api';
 import { Eye, EyeOff } from 'lucide-react';
 
-// Elara corrections that cycle on the left panel to show what the product does
 const CORRECTIONS = [
   { wrong: '"I am working since 5 years"', right: '"I have been working for 5 years"', tag: 'Tense' },
   { wrong: '"She don\'t know the answer"',  right: '"She doesn\'t know the answer"',   tag: 'Subject–Verb' },
@@ -77,7 +80,6 @@ function LoginPageInner() {
 
   useEffect(() => { setTimeout(() => setMounted(true), 30); }, []);
 
-  // Cycle through Elara corrections every 4 s
   useEffect(() => {
     const id = setInterval(() => {
       setCorrVisible(false);
@@ -89,7 +91,6 @@ function LoginPageInner() {
     return () => clearInterval(id);
   }, []);
 
-  // Cycle stats label
   useEffect(() => {
     const id = setInterval(() => setStatIdx(i => (i + 1) % STATS.length), 2500);
     return () => clearInterval(id);
@@ -97,10 +98,10 @@ function LoginPageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await login.mutateAsync({ email, password });
-      router.push(params.get('redirect') || '/dashboard');
-    } catch (_) {}
+    // FIX: No try/catch — let React Query set isError so the error banner renders.
+    // FIX: Read 'next' param (set by middleware) not 'redirect' (old/wrong name).
+    await login.mutateAsync({ email, password });
+    router.push(params.get('next') || '/dashboard');
   }
 
   const corr = CORRECTIONS[corrIdx];
@@ -125,7 +126,6 @@ function LoginPageInner() {
           background: 'var(--gold)', opacity: .07, filter: 'blur(110px)',
           bottom: '-10%', right: '-6%', animation: 'auth-float-b 22s ease-in-out infinite 3s',
         }} />
-        {/* Grid */}
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px)',
@@ -136,7 +136,7 @@ function LoginPageInner() {
         }} />
       </div>
 
-      {/* Nav bar — same height as landing */}
+      {/* Nav bar */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 20, height: 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -164,7 +164,6 @@ function LoginPageInner() {
             className="auth-left"
             style={{ opacity: mounted ? 1 : 0, animation: mounted ? 'auth-fade-left .5s ease both' : 'none' }}
           >
-            {/* Live correction card */}
             <div style={{
               borderRadius: 16, border: '1px solid var(--border2)',
               background: 'var(--surface)', padding: '20px 20px 16px',
@@ -199,7 +198,6 @@ function LoginPageInner() {
               </div>
             </div>
 
-            {/* Cycling stat */}
             <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span style={{
                 fontFamily: 'var(--serif)', fontSize: 44, fontWeight: 700,
@@ -211,10 +209,9 @@ function LoginPageInner() {
             </div>
 
             <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--text-1)', lineHeight: 1.45, marginBottom: 28 }}>
-              "Real feedback. Real improvement.<br />Real interviews."
+              &quot;Real feedback. Real improvement.<br />Real interviews.&quot;
             </p>
 
-            {/* Score bars */}
             {[
               { label: 'Fluency', pct: 82, color: 'var(--emerald)' },
               { label: 'Grammar', pct: 71, color: 'var(--gold)' },
@@ -314,7 +311,6 @@ function LoginPageInner() {
               <div style={{ flex: 1, height: 1, background: 'var(--border2)' }} />
             </div>
 
-            {/* OAuth stubs */}
             {[
               { label: 'Continue with Google', icon: '🇬' },
               { label: 'Continue with GitHub', icon: '⬡' },
@@ -343,7 +339,6 @@ function LoginPageInner() {
         </div>
       </div>
 
-      {/* Responsive: stack on mobile */}
       <style>{`
         @media(max-width:680px){
           .auth-grid{grid-template-columns:1fr!important}

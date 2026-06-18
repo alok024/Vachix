@@ -20,9 +20,13 @@ const loginLimiter = rateLimit({
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 60 * 60_000, // 1 hour — blocks account-farming from the same IP
-  max:      3,
-  message:  { error: 'Too many accounts created from this address. Please wait.' },
+  windowMs: 60 * 60_000, // 1 hour
+  // Raised from 3 → 10: the old limit was too aggressive for shared IPs
+  // (offices, universities, mobile NAT) where multiple legitimate users
+  // sit behind the same IP. 10/hr still blocks bulk account-farming while
+  // not locking out real users on shared networks.
+  max:      10,
+  message:  { error: 'Too many accounts created from this address. Please wait an hour.' },
 });
 
 const resetLimiter = rateLimit({
