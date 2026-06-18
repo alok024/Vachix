@@ -213,9 +213,16 @@ export async function requireVerified(
   const user = req.user!;
   try {
     const dbUser = await db.getUserById(user.id);
+    // SOFT GATE: email verification hard-block disabled while SMTP is unconfirmed.
+    // Blocking AI access for unverified users locks out everyone since email
+    // delivery is not yet working. Log a warning and let them through.
+    // TODO: restore the hard block once SMTP is verified:
+    //   if (!dbUser?.email_verified) {
+    //     forbidden(res, 'Please verify your email before using this feature.', 'email_not_verified');
+    //     return;
+    //   }
     if (!dbUser?.email_verified) {
-      forbidden(res, 'Please verify your email before using this feature.', 'email_not_verified');
-      return;
+      log.warn('Unverified user accessing AI (soft gate active)', { userId: user.id });
     }
     next();
   } catch (err) {
@@ -245,9 +252,15 @@ export async function requireOnboarded(
     const createdAt = dbUser?.created_at ? new Date(dbUser.created_at) : null;
     const isPreLaunchUser = createdAt !== null && createdAt < onboardingLaunch;
 
+    // SOFT GATE: onboarding hard-block disabled while existing users are being backfilled.
+    // TODO: restore once all users have onboarding_completed_at set and the
+    // onboarding flow is confirmed working end-to-end:
+    //   if (!dbUser?.onboarding_completed_at && !isPaid && !isPreLaunchUser) {
+    //     forbidden(res, 'Please complete onboarding before using this feature.', 'onboarding_required');
+    //     return;
+    //   }
     if (!dbUser?.onboarding_completed_at && !isPaid && !isPreLaunchUser) {
-      forbidden(res, 'Please complete onboarding before using this feature.', 'onboarding_required');
-      return;
+      log.warn('User without onboarding accessing AI (soft gate active)', { userId: user.id });
     }
     next();
   } catch (err) {
