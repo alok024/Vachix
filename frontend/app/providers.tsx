@@ -54,7 +54,8 @@ function PostHogInit() {
 // custom properties (--bg, --text1, etc.) never applied. Now we set the
 // data-theme attribute so all theme variables work correctly.
 function ThemeApplier() {
-  const { isDark, toggleTheme } = useUIStore((s) => ({ isDark: s.isDark, toggleTheme: s.toggleTheme }));
+  const isDark = useUIStore((s) => s.isDark);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
 
   useEffect(() => {
     // On first mount, sync with the landing page's ssi-theme localStorage key.
