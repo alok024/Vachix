@@ -144,8 +144,17 @@ export async function loginUser(
     throw new AppError(401, 'invalid_credentials', 'Invalid email or password');
   }
 
+  // EMAIL VERIFICATION GATE — temporarily softened.
+  // Hard-blocking login while email delivery is unconfirmed locks out all
+  // existing users (old accounts never verified) and new users who didn't
+  // receive the email. Re-enable once SMTP is confirmed working by
+  // uncommenting the block below and removing the warning-only path.
+  //
+  // if (!user.email_verified) {
+  //   throw new AppError(403, 'email_not_verified', 'Please verify your email before logging in.');
+  // }
   if (!user.email_verified) {
-    throw new AppError(403, 'email_not_verified', 'Please verify your email before logging in.');
+    authLogger.warn('Unverified user logging in (soft gate active)', { userId: user.id });
   }
 
   const usage = await db.getUsage(user.id);
