@@ -74,11 +74,13 @@ export default function ReferralPage() {
           { icon: Star,  label: 'Rewarded',         value: isError ? '—' : (referral?.rewarded ?? 0),    color: 'var(--warn)' },
           { icon: Zap,   label: 'Bonus sessions',   value: isError ? '—' : (referral?.bonus_calls ?? 0), color: 'var(--emerald)' },
         ].map((s) => (
-          <Card key={s.label} className="p-4 text-center">
+          <div key={s.label}>
+          <Card className="p-4 text-center">
             <s.icon className="w-4 h-4 mx-auto mb-2" style={{ color: s.color }} />
             <div className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{String(s.value)}</div>
             <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>{s.label}</div>
           </Card>
+          </div>
         ))}
       </div>
 

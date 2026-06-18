@@ -258,7 +258,7 @@ function LoginPageInner() {
                 borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 13,
                 color: 'var(--error)',
               }}>
-                {extractErrorMessage(login.error)}
+                {extractErrorMessage(login.error as any)}
               </div>
             )}
 

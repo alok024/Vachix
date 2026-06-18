@@ -113,7 +113,7 @@ export default function RegisterPage() {
 
           {register.isError && (
             <div style={{ background: 'var(--error-dim)', border: '1px solid var(--error-border)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 13, color: 'var(--error)' }}>
-              {extractErrorMessage(register.error)}
+              {extractErrorMessage(register.error as any)}
             </div>
           )}
 
