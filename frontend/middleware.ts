@@ -77,9 +77,14 @@ export async function middleware(req: NextRequest) {
 
   const valid = await isValidAccessToken(accessToken);
 
-  // ── /login, /register ─────────────────────────────────────────
+ // ── /login, /register ─────────────────────────────────────────
   if (isAuthPage) {
-    if (valid) return NextResponse.redirect(new URL('/dashboard', req.url));
+    // Only auto-redirect away from /login when already authenticated.
+    // /register stays reachable even with a valid session, since this app
+    // gets used on shared devices.
+    if (valid && pathname === '/login') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
     return NextResponse.next();
   }
 
