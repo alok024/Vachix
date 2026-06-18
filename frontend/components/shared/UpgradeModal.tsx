@@ -20,6 +20,13 @@ interface RazorpayOptions {
   name: string; description: string;
   prefill: { email: string; name: string };
   theme: { color: string };
+  config?: {
+    display: {
+      blocks: Record<string, { name: string; instruments: { method: string }[] }>;
+      sequence: string[];
+      preferences: { show_default_blocks: boolean };
+    };
+  };
   handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => void;
   modal: { ondismiss: () => void };
 }
@@ -81,6 +88,16 @@ export function UpgradeModal() {
         prefill: { email: user?.email ?? '', name: user?.name ?? '' },
         // Accent from the brand, not hardcoded blue
         theme: { color: '#9b7fff' },
+        config: {
+          display: {
+            blocks: {
+              upi:  { name: 'Pay by UPI', instruments: [{ method: 'upi' }] },
+              card: { name: 'Pay by Card', instruments: [{ method: 'card' }] },
+            },
+            sequence: ['block.upi', 'block.card'],
+            preferences: { show_default_blocks: false },
+          },
+        },
         handler: async (response) => {
           const vRes = await verifyPayment.mutateAsync({ ...response, plan });
           if (vRes.ok) {
