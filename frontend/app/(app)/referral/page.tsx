@@ -12,7 +12,7 @@ export default function ReferralPage() {
   const { data: referral, isLoading, isError } = useReferral();
 
   const referralUrl = referral?.code
-    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://speaksmart.in'}/register?ref=${referral.code}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://vachix.in'}/register?ref=${referral.code}`
     : null;
 
   function copyLink() {

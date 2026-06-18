@@ -26,7 +26,7 @@ const prodFormat = combine(
 export const logger = winston.createLogger({
   level:       isProd ? 'info' : 'debug',
   format:      isProd ? prodFormat : devFormat,
-  defaultMeta: { service: 'speaksmart-api' },
+  defaultMeta: { service: 'vachix-api' },
   transports:  [new winston.transports.Console()],
 });
 

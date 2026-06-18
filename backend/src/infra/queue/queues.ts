@@ -1,7 +1,7 @@
 /**
  * Queue Definitions
  *
- * Single `speaksmart:background` queue handles:
+ * Single `vachix:background` queue handles:
  *   - persist-mistakes         (AI memory after each session)
  *   - recompute-weak-areas     (topic scoring after each session)
  *   - expire-subscriptions     (recurring hourly — replaces setInterval)
@@ -19,7 +19,7 @@ import { logger }   from '../logger';
 
 const log = logger.child({ module: 'queue' });
 
-export const QUEUE_NAME = 'speaksmart:background';
+export const QUEUE_NAME = 'vachix:background';
 
 let _queue: Queue | null = null;
 

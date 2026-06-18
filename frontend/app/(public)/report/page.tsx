@@ -56,7 +56,7 @@ function ReportPageInner() {
         <div className="text-center">
           <p className="text-xl font-semibold text-white/80">{error ?? 'Something went wrong.'}</p>
           <a href="/" className="mt-4 inline-block text-[#4F8EF7] hover:underline">
-            Go to SpeakSmart →
+            Go to Vachix →
           </a>
         </div>
       </div>
@@ -121,7 +121,7 @@ function ReportPageInner() {
         {/* CTA */}
         <div className="rounded-2xl border border-[#4F8EF7]/20 bg-[#4F8EF7]/[0.06] p-6 text-center">
           <p className="font-semibold text-white mb-1">Practice makes perfect</p>
-          <p className="text-sm text-white/50 mb-4">Join SpeakSmart and ace your next interview</p>
+          <p className="text-sm text-white/50 mb-4">Join Vachix and ace your next interview</p>
           <a
             href={signupUrl}
             className="inline-block rounded-xl bg-[#4F8EF7] px-6 py-3 font-semibold text-white hover:bg-[#6ba3f9] transition-colors"

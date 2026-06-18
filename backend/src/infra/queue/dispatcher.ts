@@ -72,7 +72,7 @@ export async function dispatchRecomputeWeakAreas(userId: string): Promise<void> 
 
 // ── Schedule: B2B lead 24h follow-up email ─────────────────────────
 //
-// With Redis:    enqueues a delayed job (24h) on speaksmart:background.
+// With Redis:    enqueues a delayed job (24h) on vachix:background.
 //               jobId is the lead's id — BullMQ dedupes on jobId, so
 //               re-submitting the same lead twice won't double-send.
 // Without Redis: skipped — there's no safe inline equivalent for a

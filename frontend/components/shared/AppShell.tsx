@@ -228,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
             <span className="text-sm font-semibold hidden sm:block" style={{ color: 'var(--text-1)' }}>
-              {PAGE_TITLES[pathname] ?? 'SpeakSmart'}
+              {PAGE_TITLES[pathname] ?? 'Vachix'}
             </span>
           </div>
 

@@ -96,7 +96,7 @@ function VerifyEmailPageInner() {
             ) : (
               <>
                 <p className="text-sm text-white/50">
-                  {isSignup ? 'Welcome to SpeakSmart! ' : ''}Redirecting to login in 3 s…
+                  {isSignup ? 'Welcome to Vachix! ' : ''}Redirecting to login in 3 s…
                 </p>
                 <button
                   onClick={() => {

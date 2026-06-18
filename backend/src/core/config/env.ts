@@ -55,15 +55,15 @@ const EnvSchema = z.object({
   RAZORPAY_TEST_WEBHOOK_SECRET: z.string().default(''),
 
   // ─── URLs ─────────────────────────────────────────────────────
-  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('https://speaksmart.in'),
+  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('https://vachix.in'),
 
   // FIX M2: Vercel preview deployments use dynamic subdomain URLs like
-  // speaksmartindia-git-fix-branch-xyz.vercel.app which can't be hardcoded
+  // vachixindia-git-fix-branch-xyz.vercel.app which can't be hardcoded
   // in PROD_ORIGINS. EXTRA_ALLOWED_ORIGINS is a comma-separated list of
   // additional origins to whitelist at runtime — set it in Railway/env to
   // add preview URLs without a code deploy. Examples:
-  //   EXTRA_ALLOWED_ORIGINS=https://speaksmartindia-pr-42.vercel.app
-  //   EXTRA_ALLOWED_ORIGINS=https://preview.speaksmart.in,https://staging.speaksmart.in
+  //   EXTRA_ALLOWED_ORIGINS=https://vachixindia-pr-42.vercel.app
+  //   EXTRA_ALLOWED_ORIGINS=https://preview.vachix.in,https://staging.vachix.in
   EXTRA_ALLOWED_ORIGINS: z.string().default(''),
 
   // ─── Email / notifications ────────────────────────────────────

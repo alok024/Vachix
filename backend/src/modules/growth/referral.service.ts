@@ -105,8 +105,8 @@ export async function getOrCreateReferralCode(userId: string): Promise<ReferralI
   const stats = await db.getReferralStats(userId);
 
   const shareUrl    = `${BASE_URL}?ref=${code}`;
-  const copyText    = `Practice English interviews with Aria on SpeakSmart — it's genuinely helpful. Use my link and we both get ${BONUS_CALLS} extra AI sessions free: ${shareUrl}`;
-  const waMessage   = encodeURIComponent(`Hey! I've been using SpeakSmart to prep for interviews and it's really good. Try it free — we both get ${BONUS_CALLS} bonus AI sessions: ${shareUrl}`);
+  const copyText    = `Practice English interviews with Aria on Vachix — it's genuinely helpful. Use my link and we both get ${BONUS_CALLS} extra AI sessions free: ${shareUrl}`;
+  const waMessage   = encodeURIComponent(`Hey! I've been using Vachix to prep for interviews and it's really good. Try it free — we both get ${BONUS_CALLS} bonus AI sessions: ${shareUrl}`);
 
   return {
     code,

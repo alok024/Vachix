@@ -11,7 +11,7 @@ import type { ApiResult } from '@/types';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'https://speaksmartindia-production.up.railway.app';
+  'https://vachix-production.up.railway.app';
 
 // Free-tier AI call limit is defined server-side in env.ts (PLAN_LIMITS.free.ai_calls)
 // and returned per-user via usage.limit in the /me response.

@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SpeakSmart — Say it like you mean it.',
+  title: 'Vachix — Say it like you mean it.',
   description:
     'AI-powered English speaking and interview preparation for Indian students and job seekers. Practice real questions for UPSC, Bank PO, SSC, campus placements.',
   keywords: [
@@ -42,13 +42,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SpeakSmart',
+    title: 'Vachix',
   },
   openGraph: {
-    title: 'SpeakSmart — Say it like you mean it.',
+    title: 'Vachix — Say it like you mean it.',
     description: 'Practice interviews in Hindi, English, or Hinglish. Get real feedback.',
-    url: 'https://speaksmart.in',
-    siteName: 'SpeakSmart India',
+    url: 'https://vachix.in',
+    siteName: 'Vachix',
     type: 'website',
   },
 };

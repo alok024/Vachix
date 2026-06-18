@@ -11,13 +11,13 @@ export default function TermsPage() {
 
         <h2>1. Acceptance of Terms</h2>
         <p>
-          By accessing or using SpeakSmart ("the Service"), you agree to be bound by these
+          By accessing or using Vachix ("the Service"), you agree to be bound by these
           Terms of Service. If you do not agree, do not use the Service.
         </p>
 
         <h2>2. Description of Service</h2>
         <p>
-          SpeakSmart provides AI-powered interview coaching and English communication
+          Vachix provides AI-powered interview coaching and English communication
           practice. The Service is intended for personal, non-commercial use unless you
           have entered into a separate B2B agreement with us.
         </p>
@@ -47,7 +47,7 @@ export default function TermsPage() {
 
         <h2>6. Intellectual Property</h2>
         <p>
-          All content, branding, and AI models provided by SpeakSmart remain our
+          All content, branding, and AI models provided by Vachix remain our
           exclusive property. Your practice session data belongs to you.
         </p>
 
@@ -59,7 +59,7 @@ export default function TermsPage() {
 
         <h2>8. Limitation of Liability</h2>
         <p>
-          To the maximum extent permitted by law, SpeakSmart shall not be liable for
+          To the maximum extent permitted by law, Vachix shall not be liable for
           indirect, incidental, or consequential damages arising from your use of the
           Service.
         </p>
@@ -73,8 +73,8 @@ export default function TermsPage() {
         <h2>10. Contact</h2>
         <p>
           For questions about these terms, email us at{' '}
-          <a href="mailto:support@speaksmart.in" className="text-[#4F8EF7]">
-            support@speaksmart.in
+          <a href="mailto:support@vachix.in" className="text-[#4F8EF7]">
+            support@vachix.in
           </a>.
         </p>
       </div>

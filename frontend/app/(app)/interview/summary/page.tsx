@@ -33,13 +33,13 @@ function InterviewSummaryPageInner() {
   const jobReadyScore = sessionData?.job_ready_score;
 
   function buildShareText() {
-    return `I scored ${avgScore}/10 on my ${sessionData?.profession || config.profession} interview with SpeakSmart India! 🎙️ Try it free: https://speaksmart.in`;
+    return `I scored ${avgScore}/10 on my ${sessionData?.profession || config.profession} interview with Vachix! 🎙️ Try it free: https://vachix.in`;
   }
 
   async function copyLink() {
     if (copyLoading) return;
     if (shareUrl) { await navigator.clipboard.writeText(shareUrl); showToast('🔗 Link copied!'); return; }
-    if (!sessionId) { await navigator.clipboard.writeText('https://speaksmart.in'); showToast('🔗 Link copied!'); return; }
+    if (!sessionId) { await navigator.clipboard.writeText('https://vachix.in'); showToast('🔗 Link copied!'); return; }
     setCopyLoading(true);
     const res = await interviewApi.getShareToken(sessionId);
     setCopyLoading(false);
@@ -48,14 +48,14 @@ function InterviewSummaryPageInner() {
       await navigator.clipboard.writeText(res.data.share_url);
       showToast('🔗 Session link copied!');
     } else {
-      await navigator.clipboard.writeText('https://speaksmart.in');
+      await navigator.clipboard.writeText('https://vachix.in');
       showToast('🔗 Link copied (share token unavailable)');
     }
   }
 
   function downloadReport() {
     const lines = [
-      'SpeakSmart India — Interview Report',
+      'Vachix — Interview Report',
       `Date: ${formatDate(sessionData?.created_at ?? new Date().toISOString())}`,
       `Profession: ${sessionData?.profession ?? config.profession}`,
       `Score: ${avgScore}/10`,
@@ -72,7 +72,7 @@ function InterviewSummaryPageInner() {
     const blob = new Blob([lines], { type: 'text/plain' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = `speaksmart-report-${Date.now()}.txt`; a.click();
+    a.href = url; a.download = `vachix-report-${Date.now()}.txt`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
@@ -145,7 +145,7 @@ function InterviewSummaryPageInner() {
             <Button variant="secondary" size="sm" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank')}>
               📱 WhatsApp
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://speaksmart.in')}`, '_blank')}>
+            <Button variant="secondary" size="sm" onClick={() => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://vachix.in')}`, '_blank')}>
               💼 LinkedIn
             </Button>
             <Button variant="secondary" size="sm" onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(buildShareText())}`, '_blank')}>

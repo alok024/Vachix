@@ -3,7 +3,7 @@
  *
  * Client-side form validation schemas for auth flows.
  * These mirror the backend schemas in backend/src/core/utils/schemas.ts.
- * In future, both can import from @speaksmart/shared.
+ * In future, both can import from @vachix/shared.
  */
 import { z } from 'zod';
 

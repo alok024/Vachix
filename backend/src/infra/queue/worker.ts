@@ -1,7 +1,7 @@
 /**
  * Background Worker
  *
- * Processes every job on `speaksmart:background`.
+ * Processes every job on `vachix:background`.
  * Runs as a separate process in production (see src/worker.ts entry point).
  * Can also run in the same process during development.
  *

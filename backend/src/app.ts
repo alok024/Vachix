@@ -51,10 +51,10 @@ app.use(helmet({
 
 // ── CORS ──────────────────────────────────────────────────────────
 const PROD_ORIGINS = [
-  'https://speaksmart.in',
-  'https://www.speaksmart.in',
-  'https://speaksmartindia.pages.dev',
-  'https://speaksmartindia.vercel.app',
+  'https://vachix.in',
+  'https://www.vachix.in',
+  'https://vachixindia.pages.dev',
+  'https://vachixindia.vercel.app',
 ];
 
 const DEV_ORIGINS = [
@@ -64,7 +64,7 @@ const DEV_ORIGINS = [
 ];
 
 // FIX M2: Vercel preview deployments use dynamic subdomain URLs
-// (e.g. speaksmartindia-git-fix-branch-xyz.vercel.app) that can't be
+// (e.g. vachixindia-git-fix-branch-xyz.vercel.app) that can't be
 // hardcoded here. EXTRA_ALLOWED_ORIGINS (comma-separated) lets you add
 // preview/staging origins via a Railway env var without a code deploy.
 // Never set this to a wildcard or an attacker-controlled domain — each
@@ -135,7 +135,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
-    status:  'SpeakSmart API running ✅',
+    status:  'Vachix API running ✅',
     version: env.VERSION,
     env:     env.NODE_ENV,
     queue:   env.REDIS_URL ? 'BullMQ (Redis)' : 'inline (no Redis)',
@@ -216,7 +216,7 @@ app.use((err: Error, req: Request, res: Response, next: express.NextFunction) =>
 const PORT = env.PORT;
 
 app.listen(PORT, () => {
-  logger.info('🚀 SpeakSmart API started', {
+  logger.info('🚀 Vachix API started', {
     port: PORT, env: env.NODE_ENV, version: env.VERSION,
     queue: env.REDIS_URL ? 'BullMQ (Redis)' : 'inline (no Redis)',
   });

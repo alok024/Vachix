@@ -15,13 +15,13 @@ import '@/app/landing.css';
 
 /* ─── FAQ DATA ─────────────────────────────────────────── */
 const FAQS = [
-  { q: 'Do I need to speak aloud, or can I type my answers?', a: 'Both work. You can type or speak — if your device has a microphone, SpeakSmart will transcribe your answer in real time. Elara then analyses whichever form she receives.' },
+  { q: 'Do I need to speak aloud, or can I type my answers?', a: 'Both work. You can type or speak — if your device has a microphone, Vachix will transcribe your answer in real time. Elara then analyses whichever form she receives.' },
   { q: 'Is it useful if my English is already decent?', a: 'Yes — Elara catches the subtle mistakes standard spell-checkers miss: "myself is", "I am having experience", prepositional errors, and bureaucratic phrases that weaken interview impact.' },
   { q: 'Which exams does the interview coach cover?', a: 'UPSC/IAS, Bank PO (IBPS & SBI), SSC CGL/CHSL, Railway (RRB), Defence (NDA/CDS), Software Engineering, Data Science, Product Management, Campus Placements, Teaching, and Healthcare. New tracks are added regularly.' },
   { q: 'Can I cancel my subscription at any time?', a: 'Yes. Cancel from your profile page and you keep access until the end of the billing period. No questions asked, no hidden fees.' },
   { q: 'Is my data private?', a: 'Your interview sessions and corrections are stored only to generate your progress analytics. We do not share your data with third parties.' },
-  { q: 'How is SpeakSmart different from other interview prep apps?', a: 'Most prep apps focus on what you know. SpeakSmart also trains how you say it — the live correction loop and real-time language coaching is unique to us.' },
-  { q: 'Do you offer plans for colleges or coaching institutes?', a: "Yes. SpeakSmart for Teams gives institutions a shared dashboard, bulk seat management, and per-student progress tracking at seat-based pricing. It's rolling out now — reach out from the \"For Teams\" section above to get early access." },
+  { q: 'How is Vachix different from other interview prep apps?', a: 'Most prep apps focus on what you know. Vachix also trains how you say it — the live correction loop and real-time language coaching is unique to us.' },
+  { q: 'Do you offer plans for colleges or coaching institutes?', a: "Yes. Vachix for Teams gives institutions a shared dashboard, bulk seat management, and per-student progress tracking at seat-based pricing. It's rolling out now — reach out from the \"For Teams\" section above to get early access." },
   { q: 'Can I get free sessions beyond the first 7?', a: "Yes — refer a friend from your profile page and you'll both get +10 bonus AI sessions when they sign up. There's no limit on how many friends you can refer." },
 ];
 
@@ -30,7 +30,7 @@ const TRACKS = ['UPSC / IAS', 'Bank PO', 'SSC CGL', 'Campus Placement', 'IBPS PO
 const TESTIMONIALS = [
   { quote: "Elara caught 'myself is Rahul' on my very first session. I had been saying it for years. Got my SBI PO interview call three weeks later.", name: 'Priya Sharma', meta: 'SBI PO 2024 Qualified', avatar: 'P', color: '#9b7fff' },
   { quote: "The UPSC mock questions are eerily accurate. And the fluency score actually moved — I went from 6.2 to 8.1 in six weeks.", name: 'Rahul Verma', meta: 'UPSC Mains 2024', avatar: 'R', color: '#e2c97e' },
-  { quote: "Our entire placement batch used SpeakSmart for 30 days. Average interview confidence score jumped 28%. Placement rate went up.", name: 'Dr. Kavita Nair', meta: 'TPO, Tier 2 Engineering College', avatar: 'K', color: '#4dd9ac' },
+  { quote: "Our entire placement batch used Vachix for 30 days. Average interview confidence score jumped 28%. Placement rate went up.", name: 'Dr. Kavita Nair', meta: 'TPO, Tier 2 Engineering College', avatar: 'K', color: '#4dd9ac' },
 ];
 
 const DEMO_ANS = 'Myself is Rahul Kumar. I am having 2 years of experience in banking sector. I always do the needful on time.';
@@ -498,7 +498,7 @@ export default function LandingPage() {
             <div>
               <span className="ssi-eyebrow">For institutions & teams</span>
               <h2 className="ssi-sh2">Training a batch?<br /><span className="upright">Coaching 50+ students?</span></h2>
-              <p className="ssi-body-copy" style={{ marginTop: 16 }}>Coaching institutes, colleges, and placement cells can bring SpeakSmart to an entire batch — one shared view of who's practicing, who's stuck, and where to focus the next class.</p>
+              <p className="ssi-body-copy" style={{ marginTop: 16 }}>Coaching institutes, colleges, and placement cells can bring Vachix to an entire batch — one shared view of who's practicing, who's stuck, and where to focus the next class.</p>
               <ul className="ssi-b2b-feats">
                 {['Bulk seat management — onboard a whole batch at once', 'Per-student progress tracking for coordinators', 'Shared dashboard across your institution', 'Seat-based pricing — cheaper per student at volume', 'Dedicated onboarding for your batch'].map(f => (
                   <li key={f}><span className="ssi-b2b-check">✓</span>{f}</li>
@@ -525,9 +525,9 @@ export default function LandingPage() {
       <section className="ssi-india-sect" id="about">
         <div className="ssi-india-inner">
           <div className="ssi-rvl">
-            <span className="ssi-eyebrow">Why SpeakSmart exists</span>
+            <span className="ssi-eyebrow">Why Vachix exists</span>
             <h2 className="ssi-sh2">The gap no coaching<br /><span className="upright">class ever fills</span></h2>
-            <p className="ssi-body-copy" style={{ marginTop: 20 }}>Every year, millions of qualified candidates walk into competitive panels — knowing every answer — and lose marks on how they say it. Filler words, tense slips, and phrasing that reads as uncertain. Coaching classes teach content. Nobody teaches delivery. SpeakSmart does.</p>
+            <p className="ssi-body-copy" style={{ marginTop: 20 }}>Every year, millions of qualified candidates walk into competitive panels — knowing every answer — and lose marks on how they say it. Filler words, tense slips, and phrasing that reads as uncertain. Coaching classes teach content. Nobody teaches delivery. Vachix does.</p>
             <div className="ssi-india-quote ssi-rv d2">
               <p>"A coaching class with 200 students teaches everyone the same content. It can't tell you, individually, that you've been saying 'myself is' for three years. Elara can — on your very first session."</p>
               <cite>What Elara is built to catch</cite>
@@ -542,7 +542,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            <p className="ssi-body-copy" style={{ marginTop: 28, fontSize: 13 }}>Candidates from Tier 2 and Tier 3 cities use SpeakSmart to close the communication gap that big-city coaching students never have to think about.</p>
+            <p className="ssi-body-copy" style={{ marginTop: 28, fontSize: 13 }}>Candidates from Tier 2 and Tier 3 cities use Vachix to close the communication gap that big-city coaching students never have to think about.</p>
           </div>
         </div>
       </section>
@@ -617,9 +617,9 @@ export default function LandingPage() {
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
             <a href="#faq">FAQ</a>
-            <a href="mailto:hello@speaksmart.in">hello@speaksmart.in</a>
+            <a href="mailto:hello@vachix.in">hello@vachix.in</a>
           </div>
-          <span className="ssi-foot-cr">© {new Date().getFullYear()} SpeakSmart India</span>
+          <span className="ssi-foot-cr">© {new Date().getFullYear()} Vachix</span>
         </div>
       </footer>
     </>

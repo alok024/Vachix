@@ -179,7 +179,7 @@ async function _fetchPublicReport(sessionId: string, shareToken: string): Promis
     share_token: shareToken,
     share_url:   shareUrl,
     referral_code: referralCode,
-    user: { name: user?.name || 'SpeakSmart User' },
+    user: { name: user?.name || 'Vachix User' },
     session: {
       id:              session.id!,
       profession:      session.profession,

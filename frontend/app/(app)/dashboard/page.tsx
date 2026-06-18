@@ -85,7 +85,7 @@ export default function DashboardPage() {
             </span>
           </h2>
           <p className="text-sm max-w-sm mx-auto mb-6 leading-relaxed" style={{ color: 'var(--text-2)' }}>
-            Most candidates fail interviews without knowing why. SpeakSmart shows you{' '}
+            Most candidates fail interviews without knowing why. Vachix shows you{' '}
             <strong style={{ color: 'var(--text-1)' }}>exactly what to fix</strong> — before your next real interview.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 rounded-2xl overflow-hidden mb-6 max-w-md mx-auto border"

@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const backendUrl =
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'https://speaksmartindia-production.up.railway.app';
+      'https://vachix-production.up.railway.app';
     return [
       {
         source: '/api/:path*',

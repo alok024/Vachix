@@ -52,7 +52,7 @@ export async function sendVerificationEmail(to: string, rawToken: string): Promi
 
   const html = `
     <p>Hi,</p>
-    <p>Thanks for signing up for SpeakSmart. Please verify your email address to activate your account.</p>
+    <p>Thanks for signing up for Vachix. Please verify your email address to activate your account.</p>
     <p>
       <a href="${verifyUrl}" style="
         display:inline-block;
@@ -71,7 +71,7 @@ export async function sendVerificationEmail(to: string, rawToken: string): Promi
   const text = [
     'Verify your email address',
     '',
-    'Thanks for signing up for SpeakSmart. Click the link below to verify your account (expires in 24 hours):',
+    'Thanks for signing up for Vachix. Click the link below to verify your account (expires in 24 hours):',
     verifyUrl,
     '',
     'If you did not create this account, ignore this email.',
@@ -79,7 +79,7 @@ export async function sendVerificationEmail(to: string, rawToken: string): Promi
 
   await sendEmail({
     to,
-    subject: 'Verify your SpeakSmart email',
+    subject: 'Verify your Vachix email',
     html,
     text,
     logContext: { link: verifyUrl },
@@ -123,7 +123,7 @@ export async function sendLeadEmails(lead: LeadEmailPayload): Promise<void> {
         ${orgType ? `<tr><td style="padding:6px 12px 6px 0;color:#666;">Org type</td><td style="padding:6px 0;">${escHtml(orgType)}</td></tr>` : ''}
         ${message ? `<tr><td style="padding:6px 12px 6px 0;color:#666;vertical-align:top;">Message</td><td style="padding:6px 0;">${escHtml(message)}</td></tr>` : ''}
       </table>
-      <p style="margin-top:16px;font-size:13px;color:#999;">Received via SpeakSmart B2B form · Reply directly to <a href="mailto:${escHtml(email)}">${escHtml(email)}</a></p>
+      <p style="margin-top:16px;font-size:13px;color:#999;">Received via Vachix B2B form · Reply directly to <a href="mailto:${escHtml(email)}">${escHtml(email)}</a></p>
     `;
     const internalText = [
       '🔔 New B2B Demo Request',
@@ -140,7 +140,7 @@ export async function sendLeadEmails(lead: LeadEmailPayload): Promise<void> {
       notifyTargets.map(to =>
         sendEmail({
           to,
-          subject: `[SpeakSmart B2B] New demo request — ${org}`,
+          subject: `[Vachix B2B] New demo request — ${org}`,
           html: internalHtml,
           text: internalText,
           logContext: { leadEmail: email, org },
@@ -154,25 +154,25 @@ export async function sendLeadEmails(lead: LeadEmailPayload): Promise<void> {
   // ── 2. Confirmation to the lead ────────────────────────────────────
   const confirmHtml = `
     <p>Hi ${escHtml(name)},</p>
-    <p>Thanks for your interest in SpeakSmart for <strong>${escHtml(org)}</strong>! We've received your demo request and will be in touch within one business day.</p>
-    <p>In the meantime, feel free to explore the product at <a href="https://speaksmart.in">speaksmart.in</a> — your team can sign up and start practising right away on the free plan.</p>
-    <p style="margin-top:24px;color:#999;font-size:13px;">The SpeakSmart Team<br/>
-    <a href="mailto:hello@speaksmart.in">hello@speaksmart.in</a></p>
+    <p>Thanks for your interest in Vachix for <strong>${escHtml(org)}</strong>! We've received your demo request and will be in touch within one business day.</p>
+    <p>In the meantime, feel free to explore the product at <a href="https://vachix.in">vachix.in</a> — your team can sign up and start practising right away on the free plan.</p>
+    <p style="margin-top:24px;color:#999;font-size:13px;">The Vachix Team<br/>
+    <a href="mailto:hello@vachix.in">hello@vachix.in</a></p>
   `;
   const confirmText = [
     `Hi ${name},`,
     '',
-    `Thanks for your interest in SpeakSmart for ${org}! We've received your demo request and will be in touch within one business day.`,
+    `Thanks for your interest in Vachix for ${org}! We've received your demo request and will be in touch within one business day.`,
     '',
-    'In the meantime, feel free to explore the product at https://speaksmart.in',
+    'In the meantime, feel free to explore the product at https://vachix.in',
     '',
-    'The SpeakSmart Team',
-    'hello@speaksmart.in',
+    'The Vachix Team',
+    'hello@vachix.in',
   ].join('\n');
 
   await sendEmail({
     to:      email,
-    subject: 'Your SpeakSmart demo request — we\'ll be in touch soon',
+    subject: 'Your Vachix demo request — we\'ll be in touch soon',
     html:    confirmHtml,
     text:    confirmText,
     logContext: { org, size },
@@ -192,9 +192,9 @@ export async function sendLeadFollowUpEmail(lead: LeadEmailPayload): Promise<voi
   const html = `
     <p>Hi ${escHtml(name)},</p>
     <p>Just following up on your demo request for <strong>${escHtml(org)}</strong> — we wanted to make sure it didn't slip through the cracks!</p>
-    <p>Happy to set up a quick call this week to walk through how SpeakSmart can help your team practice interviews at scale. Just reply to this email with a time that works, or let us know if you have any questions in the meantime.</p>
-    <p style="margin-top:24px;color:#999;font-size:13px;">The SpeakSmart Team<br/>
-    <a href="mailto:hello@speaksmart.in">hello@speaksmart.in</a></p>
+    <p>Happy to set up a quick call this week to walk through how Vachix can help your team practice interviews at scale. Just reply to this email with a time that works, or let us know if you have any questions in the meantime.</p>
+    <p style="margin-top:24px;color:#999;font-size:13px;">The Vachix Team<br/>
+    <a href="mailto:hello@vachix.in">hello@vachix.in</a></p>
   `;
   const text = [
     `Hi ${name},`,
@@ -203,13 +203,13 @@ export async function sendLeadFollowUpEmail(lead: LeadEmailPayload): Promise<voi
     '',
     'Happy to set up a quick call this week. Just reply to this email with a time that works, or let us know if you have any questions.',
     '',
-    'The SpeakSmart Team',
-    'hello@speaksmart.in',
+    'The Vachix Team',
+    'hello@vachix.in',
   ].join('\n');
 
   await sendEmail({
     to:      email,
-    subject: `Following up on your SpeakSmart demo request — ${org}`,
+    subject: `Following up on your Vachix demo request — ${org}`,
     html,
     text,
     logContext: { org, followUp: true },
@@ -226,7 +226,7 @@ function escHtml(s: string | undefined): string {
 export async function sendPasswordResetEmail(to: string, resetLink: string): Promise<void> {
   const html = `
     <p>Hi,</p>
-    <p>You requested a password reset for your SpeakSmart account.</p>
+    <p>You requested a password reset for your Vachix account.</p>
     <p>
       <a href="${resetLink}" style="
         display:inline-block;
@@ -242,7 +242,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
   `;
 
   const text = [
-    'Reset your SpeakSmart password',
+    'Reset your Vachix password',
     '',
     'You requested a password reset. Click the link below (expires in 1 hour):',
     resetLink,
@@ -252,7 +252,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
 
   await sendEmail({
     to,
-    subject: 'Reset your SpeakSmart password',
+    subject: 'Reset your Vachix password',
     html,
     text,
     logContext: { link: resetLink },

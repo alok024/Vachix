@@ -11,7 +11,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      // ── SpeakSmart design tokens (v6) ──────────────────────────
+      // ── Vachix design tokens (v6) ──────────────────────────
       colors: {
         // Background layers
         bg: {

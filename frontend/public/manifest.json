@@ -1,6 +1,6 @@
 {
-  "name": "SpeakSmart India",
-  "short_name": "SpeakSmart",
+  "name": "Vachix",
+  "short_name": "Vachix",
   "description": "AI-powered interview & English speaking coach for India",
   "start_url": "/login",
   "display": "standalone",

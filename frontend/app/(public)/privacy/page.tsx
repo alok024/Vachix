@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <p className="text-white/50 text-sm">Last updated: June 2026</p>
 
         <h2>1. What We Collect</h2>
-        <p>When you use SpeakSmart, we collect:</p>
+        <p>When you use Vachix, we collect:</p>
         <ul>
           <li><strong>Account data:</strong> email address, name, and hashed password</li>
           <li><strong>Session data:</strong> interview practice transcripts, scores, and feedback</li>
@@ -62,8 +62,8 @@ export default function PrivacyPage() {
         </ul>
         <p>
           To exercise any of these rights, email{' '}
-          <a href="mailto:support@speaksmart.in" className="text-[#4F8EF7]">
-            support@speaksmart.in
+          <a href="mailto:support@vachix.in" className="text-[#4F8EF7]">
+            support@vachix.in
           </a>.
         </p>
 
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
 
         <h2>8. Children</h2>
         <p>
-          SpeakSmart is not directed at children under 13. We do not knowingly collect
+          Vachix is not directed at children under 13. We do not knowingly collect
           personal data from anyone under 13.
         </p>
 
@@ -89,8 +89,8 @@ export default function PrivacyPage() {
         <h2>10. Contact</h2>
         <p>
           Privacy questions or requests:{' '}
-          <a href="mailto:support@speaksmart.in" className="text-[#4F8EF7]">
-            support@speaksmart.in
+          <a href="mailto:support@vachix.in" className="text-[#4F8EF7]">
+            support@vachix.in
           </a>
         </p>
       </div>

@@ -76,7 +76,7 @@ export function UpgradeModal() {
 
       const rzp = new window.Razorpay({
         key, amount, currency, order_id,
-        name: 'SpeakSmart India',
+        name: 'Vachix',
         description: `${plan === 'pro' ? 'Pro' : 'Elite'} Plan — ₹${plan === 'pro' ? '299' : '599'}/month`,
         prefill: { email: user?.email ?? '', name: user?.name ?? '' },
         // Accent from the brand, not hardcoded blue

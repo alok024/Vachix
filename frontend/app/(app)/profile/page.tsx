@@ -40,7 +40,7 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <div className="text-3xl mb-2">👋</div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Welcome to SpeakSmart</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Welcome to Vachix</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>Tell us about yourself so we can personalise your practice.</p>
         </div>
 

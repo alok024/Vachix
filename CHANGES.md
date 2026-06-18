@@ -1,4 +1,4 @@
-# SpeakSmart India — v6 Changes
+# Vachix — v6 Changes
 
 ## What was fixed and why
 
@@ -25,7 +25,7 @@ Backend URL updated: `report.html?id=` → `/report?id=` (in both `reports.contr
 
 ```
 shared/
-  package.json          ← @speaksmart/shared package
+  package.json          ← @vachix/shared package
   index.ts              ← barrel export
   schemas/
     api.schemas.ts      ← all Zod schemas + inferred TypeScript types
@@ -34,9 +34,9 @@ shared/
 Both FE and BE import from here → zero drift possible.
 
 **To wire up:**
-1. In `backend/package.json`: add `"@speaksmart/shared": "file:../shared"`
-2. In `frontend/package.json`: add `"@speaksmart/shared": "file:../shared"`
-3. Replace `import type { User } from '@/types'` with `import type { User } from '@speaksmart/shared'`
+1. In `backend/package.json`: add `"@vachix/shared": "file:../shared"`
+2. In `frontend/package.json`: add `"@vachix/shared": "file:../shared"`
+3. Replace `import type { User } from '@/types'` with `import type { User } from '@vachix/shared'`
 
 ---
 
@@ -119,7 +119,7 @@ features/
 ## File structure after v6
 
 ```
-SpeakSmartIndia/
+VachixIndia/
 ├── shared/                          ← NEW: shared Zod schemas
 │   ├── package.json
 │   ├── index.ts

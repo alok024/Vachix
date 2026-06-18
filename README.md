@@ -1,9 +1,9 @@
-# SpeakSmart India — v5 Monolith
+# Vachix — v5 Monolith
 
 ## Structure
 
 ```
-SpeakSmartIndia/
+VachixIndia/
 ├── frontend/          ← Next.js 15 + TypeScript + Tailwind + shadcn/ui
 │   ├── app/
 │   │   ├── layout.tsx              ← Root layout (Sora font, Providers)
