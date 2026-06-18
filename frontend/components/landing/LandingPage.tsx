@@ -10,6 +10,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useUIStore } from '@/store/ui';
 import '@/app/landing.css';
 
 /* ─── FAQ DATA ─────────────────────────────────────────── */
@@ -38,7 +39,16 @@ export default function LandingPage() {
   const [topbarOpen, setTopbarOpen] = useState(true);
   const [navScrolled, setNavScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // BUG FIX: the landing page used to keep its own private `theme` state +
+  // its own 'ssi-theme' read/write, completely separate from the zustand
+  // `useUIStore` that the rest of the app (AppShell, etc.) reads from. That
+  // meant toggling theme here never updated the store, so the very next
+  // client-side navigation into the app could show a stale toggle state,
+  // and clicking the landing toggle a second time sometimes looked like it
+  // "did nothing" because the DOM attribute and the store had drifted apart.
+  // Now the landing page reads/writes the SAME store as everywhere else.
+  const isDark = useUIStore((s) => s.isDark);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [bigNum, setBigNum] = useState('0%');
   const bigNumRef = useRef<HTMLSpanElement>(null);
@@ -48,19 +58,6 @@ export default function LandingPage() {
   const [showCorr, setShowCorr] = useState(false);
   const [showScores, setShowScores] = useState(false);
   const [ansText, setAnsText] = useState('');
-
-  /* ── Theme init from localStorage ── */
-  useEffect(() => {
-    const saved = localStorage.getItem('ssi-theme') as 'dark' | 'light' | null;
-    if (saved) { setTheme(saved); document.documentElement.setAttribute('data-theme', saved); }
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('ssi-theme', next);
-  };
 
   /* ── Nav scroll ── */
   useEffect(() => {
@@ -184,7 +181,12 @@ export default function LandingPage() {
         </ul>
 
         <div className="ssi-nav-end">
-          <button className="ssi-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+          <button
+            className="ssi-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-pressed={isDark}
+          >
             <div className="ssi-tt-track">
               {/* Moon */}
               <svg className="ssi-tt-icon ssi-tt-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
