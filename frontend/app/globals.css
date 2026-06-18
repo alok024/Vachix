@@ -202,3 +202,51 @@ body {
   -webkit-text-fill-color:transparent;
   background-clip:text;
 }
+
+/* ── Mobile UX improvements ───────────────────────────────────────── */
+
+/* Remove grey tap flash on Android Chrome */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Smooth momentum scrolling on iOS */
+.overflow-y-auto, .overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area support for iPhone notch / home indicator */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Touch targets: all interactive elements minimum 44×44px on mobile */
+@media (max-width: 767px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Override for purely decorative/inline links */
+  button.btn-inline, a.link-inline {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* Chat input area — push up above iOS keyboard when focused */
+/* dvh (dynamic viewport height) already handles most of this on iOS 15.4+
+   but we add this for older devices */
+@supports not (height: 100dvh) {
+  .chat-layout { height: calc(100vh - 56px); }
+}
+
+/* Prevent over-scroll bounce from looking broken on the session page */
+.no-overscroll {
+  overscroll-behavior: none;
+}
+
+/* Large-enough tap targets for chip/pill buttons on mobile */
+@media (max-width: 767px) {
+  .chip-btn {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}

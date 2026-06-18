@@ -3,7 +3,7 @@
 /**
  * store/ui.ts
  *
- * Zustand UI store — theme, sidebar, upgrade modal, toasts, boot loader.
+ * Zustand UI store — theme, sidebar, upgrade modal, toasts.
  *
  * Moved here from components/ui/index.ts so that `@/store/ui` (already
  * the import path used by AppShell, ProtectedRoute, ToastStack,
@@ -43,10 +43,6 @@ interface UIStore {
   toasts: Toast[];
   showToast: (message: string, opts?: { className?: string; duration?: number }) => () => void;
   removeToast: (id: string) => void;
-
-  // Boot loader
-  booting: boolean;
-  setBooting: (v: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -89,9 +85,6 @@ export const useUIStore = create<UIStore>()(
       },
       removeToast: (id) =>
         set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-
-      booting: false,
-      setBooting: (v) => set({ booting: v }),
     }),
     {
       name: 'ss-ui',

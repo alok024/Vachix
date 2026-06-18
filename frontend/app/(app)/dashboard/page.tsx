@@ -13,6 +13,7 @@ import { useUIStore } from '@/store/ui';
 import { ProgressBar, Spinner, ScoreRing } from '@/components/ui';
 import { formatDate, scoreColor } from '@/lib/utils';
 import { Target, Zap, TrendingUp } from 'lucide-react';
+import type { Session, WeakArea } from '@/types';
 
 const QUICK_STARTS = [
   { label: 'Software Dev',      desc: 'AI Chat · Friendly',   emoji: '💻', profession: 'Software Developer',        mode: 'chat' },
@@ -43,7 +44,11 @@ export default function DashboardPage() {
   const usage        = meData?.usage;
   const jobReadiness = meData?.job_readiness;
   const weakAreas    = meData?.weak_areas ?? [];
-  const isFree       = !user || (user.plan !== 'pro' && user.plan !== 'elite');
+  // Derive plan from the live /me response so an upgrade takes effect
+  // immediately without requiring a page refresh. Fall back to the Zustand
+  // store only while meData is still loading (avoids a free→paid flash).
+  const livePlan = meData?.user?.plan ?? user?.plan;
+  const isFree       = !livePlan || (livePlan !== 'pro' && livePlan !== 'elite');
   const FREE_LIMIT   = usage?.limit ?? user?.ai_calls_limit ?? null;
   const aiUsed       = usage?.ai_calls ?? 0;
   const aiRemaining  = usage?.remaining ?? user?.ai_calls_remaining ?? null;
@@ -121,7 +126,7 @@ export default function DashboardPage() {
             { label: 'Sessions',    value: stats?.sessions ?? 0,                                       sub: 'completed',          color: 'var(--accent)' },
             { label: 'Best Score',  value: stats?.best_score != null ? `${stats.best_score}/10` : '—', sub: 'personal best',      color: 'var(--emerald)' },
             { label: 'AI Sessions', value: aiUsed,                                                     sub: FREE_LIMIT ? `of ${FREE_LIMIT} used` : 'used', color: 'var(--violet)' },
-          ].map((s: any) => (
+          ].map((s: { label: string; value: string | number; sub: string; color: string }) => (
             <div key={s.label} className="rounded-xl p-4 text-center border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>{s.label}</div>
               <div className="text-2xl font-bold tabular-nums" style={{ color: s.color, letterSpacing: '-0.03em' }}>{s.value}</div>
@@ -170,7 +175,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <div>
-              {(history ?? []).slice(0, 4).map((s: any) => (
+              {(history ?? []).slice(0, 4).map((s: Session) => (
                 <button
                   key={s.id}
                   onClick={() => router.push(`/interview/summary?session=${s.id}`)}
@@ -263,7 +268,7 @@ export default function DashboardPage() {
             <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>Areas to Improve</span>
           </div>
           <div className="px-4 py-4 space-y-4">
-            {weakAreas.map((wa: any) => (
+            {weakAreas.map((wa: WeakArea) => (
               <div key={wa.topic}>
                 <ProgressBar
                   value={wa.avg_score}

@@ -14,6 +14,7 @@
 import { getBackgroundQueue } from './queues';
 import { logger } from '../logger';
 import type { FeedbackItem } from '../../modules/ai/ai.memory';
+import { db } from '../../core/database/client';
 
 const log = logger.child({ module: 'dispatcher' });
 
@@ -187,4 +188,26 @@ export async function scheduleSessionExpiry(): Promise<void> {
   } catch (err) {
     log.error('Failed to schedule session expiry via BullMQ', { error: err });
   }
+}
+
+// ── Token blacklist cleanup ───────────────────────────────────────
+// The token_blacklist table grows unboundedly without pruning.
+// Run a nightly DELETE to remove rows whose expires_at has passed.
+// This keeps isTokenBlacklisted() fast even under heavy auth load.
+
+export function scheduleBlacklistCleanup(): void {
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+  async function runCleanup() {
+    try {
+      await db.cleanupExpiredBlacklistTokens();
+      logger.info('Token blacklist cleanup completed');
+    } catch (err) {
+      logger.error('Token blacklist cleanup failed', { error: (err as Error).message });
+    }
+  }
+
+  // Run immediately on startup (catches any backlog), then every 24h
+  setTimeout(runCleanup, 60_000); // wait 60s after startup
+  setInterval(runCleanup, TWENTY_FOUR_HOURS);
 }

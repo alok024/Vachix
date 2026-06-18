@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMe, useLogout } from '@/hooks/queries';
@@ -90,7 +90,7 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-export default function ProfilePage() {
+function ProfilePageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const qc           = useQueryClient();
@@ -257,5 +257,17 @@ export default function ProfilePage() {
         <LogOut className="w-4 h-4" /> Sign Out
       </Button>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <Spinner size={28} style={{ color: 'var(--accent)' }} />
+      </div>
+    }>
+      <ProfilePageInner />
+    </Suspense>
   );
 }

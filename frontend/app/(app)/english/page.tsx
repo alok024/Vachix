@@ -67,7 +67,7 @@ export default function EnglishPage() {
     const systemPrompt = getElaraSystemPrompt(mode, topic);
     const res = await aiApi.call({
       messages: [
-        { role: 'user', content: `[SYSTEM: ${systemPrompt}]` },
+        { role: 'system', content: systemPrompt },
         ...messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
         { role: 'user', content: input.trim() },
       ],
@@ -164,7 +164,7 @@ export default function EnglishPage() {
           </button>
         </CardHeader>
         <CardBody>
-          <div className="space-y-4 min-h-[200px] mb-4">
+          <div className="space-y-4 min-h-[240px] sm:min-h-[320px] mb-4">
             {messages.length === 0 && (
               <p className="text-sm text-center py-8" style={{ color: 'var(--text-3)' }}>
                 {mode === 'conversation' && 'Start talking — Elara will correct your English naturally.'}
@@ -265,7 +265,7 @@ export default function EnglishPage() {
           )}
 
           {/* Input row */}
-          <div className="flex gap-2">
+          <div className="flex gap-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <input
               className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
               style={{

@@ -57,6 +57,11 @@ export const viewport: Viewport = {
   themeColor: '#9b7fff',
   width: 'device-width',
   initialScale: 1,
+  // Prevent iOS from zooming in on input focus (complement to the CSS font-size fix)
+  maximumScale: 1,
+  // Allow content to extend into the notch / home indicator area
+  // so we can use env(safe-area-inset-*) for proper padding
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

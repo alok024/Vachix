@@ -159,19 +159,18 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className={`ssi-nav${navScrolled ? ' s' : ''}${!topbarOpen ? ' topbar-gone' : ''}`} style={{ top: topbarOpen ? 36 : 0 }}>
         <a href="#hero" className="ssi-nlogo">
-          <svg className="ssi-nlogo-mark" width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <svg className="ssi-nlogo-mark" width="30" height="30" viewBox="0 0 44 44" fill="none" aria-hidden="true">
             <defs>
-              <linearGradient id="ssiLogoGrad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stopColor="var(--violet)" />
-                <stop offset="1" stopColor="var(--gold)" />
+              <linearGradient id="vachixLogoGrad" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#F97316" />
+                <stop offset="100%" stopColor="#8B5CF6" />
               </linearGradient>
             </defs>
-            <path d="M16 2C8.27 2 2 7.85 2 15.1c0 3.62 1.55 6.9 4.1 9.26-.18 1.84-.74 3.4-1.62 4.74-.2.3.05.7.4.64 2.4-.4 4.46-1.4 6.1-2.62 1.55.55 3.25.86 5.02.86 7.73 0 14-5.85 14-13.1S23.73 2 16 2Z" fill="url(#ssiLogoGrad)" />
-            <path d="M10.5 17.5c1.2 1.7 3.2 2.8 5.5 2.8s4.3-1.1 5.5-2.8" stroke="var(--bg)" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-            <circle cx="11.5" cy="13" r="1.6" fill="var(--bg)" />
-            <circle cx="20.5" cy="13" r="1.6" fill="var(--bg)" />
+            <rect width="44" height="44" rx="11" fill="url(#vachixLogoGrad)" />
+            <polyline points="11,13 22,31 33,13" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="22" cy="36" r="2.5" fill="white" opacity="0.85" />
           </svg>
-          <span>Speak<span className="ssi-nlogo-accent">Smart</span></span>
+          <span>Vachi<span className="ssi-nlogo-accent">x</span></span>
         </a>
 
         <ul className="ssi-nlinks">

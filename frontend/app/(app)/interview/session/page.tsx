@@ -620,7 +620,7 @@ function InterviewSessionPageInner() {
   if (mode === 'chat') {
     const history = store.session.chatHistory.filter((m) => m.content !== '__start__');
     return (
-      <div className="flex flex-col" style={{ height: 'calc(100dvh - 48px)' }}>
+      <div className="flex flex-col no-overscroll" style={{ height: 'calc(100dvh - 56px)' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--surface)]">
           <div>
@@ -646,7 +646,7 @@ function InterviewSessionPageInner() {
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-[var(--accent-dim)] ml-8'
                     : 'mr-8'
@@ -668,7 +668,7 @@ function InterviewSessionPageInner() {
         </div>
 
         {/* Input */}
-        <div className="px-4 pb-4 pt-2 border-t border-[var(--border)] bg-[var(--surface)]">
+        <div className="px-4 pt-2 border-t border-[var(--border)] bg-[var(--surface)]" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
           <div className="flex gap-2 max-w-3xl mx-auto">
             <textarea
               value={chatInput}

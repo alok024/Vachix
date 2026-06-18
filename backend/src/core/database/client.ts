@@ -577,6 +577,14 @@ export const db = {
     await sb('/token_blacklist', 'POST', input);
   },
 
+  // ── Prune expired blacklist tokens (run nightly) ──────────────
+  // Without this, the table grows forever and isTokenBlacklisted()
+  // gets slower with every logout/refresh.
+  async cleanupExpiredBlacklistTokens(): Promise<void> {
+    const now = new Date().toISOString();
+    await sb(`/token_blacklist?expires_at=lt.${now}`, 'DELETE');
+  },
+
   // ── Password resets ─────────────────────────────────────────────
 
   async createPasswordReset(input: Omit<PasswordResetRow, 'id' | 'used'>): Promise<void> {

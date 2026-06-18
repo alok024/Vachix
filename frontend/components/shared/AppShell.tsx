@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// NAV sections — plain array, no `as const`, so runtime checks work cleanly
 type NavItem = {
   href: string;
   label: string;
@@ -22,16 +21,20 @@ type NavItem = {
   badge?: string;
   proBadge?: boolean;
   freeOnly?: boolean;
+  mobileNav?: boolean; // show in bottom nav
 };
 
 const NAV: NavItem[] = [
-  { href: '/dashboard',       label: 'Dashboard',        icon: LayoutDashboard, section: 'Practice' },
-  { href: '/interview/setup', label: 'New Interview',    icon: Play },
-  { href: '/english',         label: 'English Practice', icon: MessageSquare,   badge: 'NEW' },
-  { href: '/history',         label: 'Past Sessions',    icon: History,         proBadge: true },
-  { href: '/profile',         label: 'Profile & Plan',   icon: User,            section: 'Account' },
+  { href: '/dashboard',       label: 'Dashboard',        icon: LayoutDashboard, section: 'Practice', mobileNav: true },
+  { href: '/interview/setup', label: 'New Interview',    icon: Play,                                  mobileNav: true },
+  { href: '/english',         label: 'English',          icon: MessageSquare,   badge: 'NEW',         mobileNav: true },
+  { href: '/history',         label: 'Sessions',         icon: History,         proBadge: true,       mobileNav: true },
+  { href: '/profile',         label: 'Profile',          icon: User,            section: 'Account',   mobileNav: true },
   { href: '/referral',        label: 'Refer & Earn',     icon: Gift,            freeOnly: true },
 ];
+
+// Bottom nav items — 5 max for comfortable touch targets
+const BOTTOM_NAV = NAV.filter((n) => n.mobileNav);
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard':         'Dashboard',
@@ -44,8 +47,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/referral':          'Refer & Earn',
 };
 
-// Violet→gold gradient logo mark — same as landing page
-// Using a stable gradient ID so it doesn't conflict across mounts
 function LogoMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -81,18 +82,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const name   = user?.name || user?.email?.split('@')[0] || '?';
   const avatar = name[0].toUpperCase();
 
+  // Hide bottom nav on session page — it needs full immersive height
+  const isSessionPage = pathname === '/interview/session';
+
   async function handleLogout() {
     await logout.mutateAsync();
     router.push('/login');
   }
 
-  // Determine which section headers to show
   let lastSection = '';
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg-app)' }}>
 
-      {/* ── Sidebar ─────────────────────────────────────────── */}
+      {/* ── Desktop Sidebar ──────────────────────────────────── */}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-56 flex flex-col',
@@ -102,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
       >
-        {/* Logo */}
+        {/* Logo — FIXED: was "SpeakSmart", now "Vachix" */}
         <Link
           href="/dashboard"
           onClick={closeSidebar}
@@ -114,17 +117,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="text-[15px] font-bold tracking-tight"
             style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--text-1)' }}
           >
-            Speak<span style={{ color: 'var(--accent)', fontStyle: 'normal' }}>Smart</span>
+            Va<span style={{ color: 'var(--accent)', fontStyle: 'normal' }}>chix</span>
           </span>
         </Link>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5">
           {NAV.map((item) => {
-            // Skip freeOnly items for paid users
             if (item.freeOnly && !isFree) return null;
 
-            const active       = pathname === item.href;
+            const active       = pathname === item.href || pathname.startsWith(item.href + '/');
             const showSection  = !!item.section && item.section !== lastSection;
             if (item.section) lastSection = item.section;
 
@@ -206,7 +208,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Main ─────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-screen lg:pl-56">
+      {/* FIXED: pb-16 on mobile so content isn't hidden behind bottom nav */}
+      <div className={cn(
+        'flex-1 flex flex-col min-h-screen lg:pl-56',
+        !isSessionPage && 'pb-16 lg:pb-0'
+      )}>
         {/* Ambient background */}
         <div className="app-ambient lg:left-56">
           <div className="app-orb app-orb-violet" />
@@ -216,27 +222,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Topbar */}
         <header
-          className="sticky top-0 z-30 h-14 flex items-center justify-between px-5 border-b backdrop-blur-xl"
+          className="sticky top-0 z-30 h-14 flex items-center justify-between px-4 border-b backdrop-blur-xl"
           style={{ background: 'var(--nav-bg)', borderColor: 'var(--border)' }}
         >
           <div className="flex items-center gap-3">
+            {/* Mobile hamburger — only shown when sidebar closed */}
             <button
               onClick={toggleSidebar}
               className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
               style={{ color: 'var(--text-2)' }}
+              aria-label="Open menu"
             >
               {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-            <span className="text-sm font-semibold hidden sm:block" style={{ color: 'var(--text-1)' }}>
+            {/* FIXED: page title now always visible (was hidden on mobile with hidden sm:block) */}
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
               {PAGE_TITLES[pathname] ?? 'Vachix'}
             </span>
           </div>
 
           <div className="flex items-center gap-1">
-            <IconBtn onClick={toggleTheme} title="Toggle theme">
+            <IconBtn onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </IconBtn>
-            <IconBtn onClick={handleLogout} title="Sign out">
+            <IconBtn onClick={handleLogout} title="Sign out" aria-label="Sign out">
               <LogOut className="w-3.5 h-3.5" />
             </IconBtn>
           </div>
@@ -246,6 +255,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* ── Mobile Bottom Navigation ─────────────────────────── */}
+      {/* ADDED: replaces the invisible hamburger-only nav for mobile users */}
+      {!isSessionPage && (
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t backdrop-blur-xl"
+          style={{
+            background: 'var(--nav-bg)',
+            borderColor: 'var(--border)',
+            // Safe area for iPhone home indicator
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
+          aria-label="Main navigation"
+        >
+          <div className="flex items-stretch h-14">
+            {BOTTOM_NAV.filter((n) => !(n.freeOnly && !isFree)).map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors duration-150"
+                  style={{ color: active ? 'var(--accent)' : 'var(--text-3)' }}
+                  aria-label={item.label}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {/* Active pill */}
+                  {active && (
+                    <span
+                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full"
+                      style={{ background: 'var(--accent)' }}
+                    />
+                  )}
+                  <item.icon
+                    className="w-5 h-5"
+                    strokeWidth={active ? 2.5 : 1.8}
+                  />
+                  <span className="text-[10px] font-medium leading-none">{item.label}</span>
+                  {item.badge && (
+                    <span
+                      className="absolute top-1.5 right-[calc(50%-18px)] text-[8px] font-bold px-1 rounded"
+                      style={{ background: 'var(--emerald)', color: '#000' }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

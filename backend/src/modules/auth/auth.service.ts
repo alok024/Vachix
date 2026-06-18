@@ -15,7 +15,10 @@ import { createVerificationToken } from './emailVerification.service';
 // multiple requests arrive with the same ss_rt simultaneously — all
 // before the browser receives the rotated cookie from the first response.
 // This cache returns the same new token pair for the same JTI within a
-// 10-second window instead of incorrectly treating it as token theft.
+// 30-second window instead of incorrectly treating it as token theft.
+// Note: REFRESH_GRACE_MS is intentionally 30 s (not 10 s) — Next.js
+// prefetches can fan out many requests simultaneously and 10 s proved
+// insufficient under slow connections in testing.
 const _refreshGrace = new Map<string, { tokens: AuthTokens; expiresAt: number }>();
 const REFRESH_GRACE_MS = 30_000;
 
@@ -209,18 +212,20 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthToke
   // immediately so it cannot be reused. Without this, a stolen refresh token
   // stays valid for 30 days and can mint unlimited access tokens indefinitely.
   // We reuse the existing token_blacklist table (same one used for access tokens).
+  // Track whether the blacklist write confirmed so the grace cache is only
+  // populated when the JTI is genuinely blacklisted. Populating it on a
+  // DB error would let subsequent requests within the grace window bypass
+  // reuse detection for a token that was never actually persisted.
+  let blacklistConfirmed = false;
   if (payload.jti) {
     try {
       const alreadyBlacklisted = await db.isTokenBlacklisted(payload.jti);
       if (alreadyBlacklisted) {
-        // Check grace cache first — Next.js middleware legitimately sends the
-        // same JTI multiple times within milliseconds (one per prefetched route).
         const grace = _refreshGrace.get(payload.jti);
         if (grace && grace.expiresAt > Date.now()) {
           authLogger.info('Refresh token reuse within grace window — returning cached tokens', { jti: payload.jti, userId: payload.id });
           return grace.tokens;
         }
-        // Outside grace window — genuine replay attack or token theft.
         authLogger.warn('Refresh token reuse detected — possible token theft', { jti: payload.jti, userId: payload.id });
         throw new AppError(401, 'refresh_token_reused', 'Refresh token has already been used. Please log in again.');
       }
@@ -234,12 +239,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthToke
         user_id:    payload.id,
         expires_at: expiresAt.toISOString(),
       });
+      blacklistConfirmed = true;
     } catch (err) {
-      // Re-throw AppError instances (reuse detection, blacklist hit)
       if (err instanceof AppError) throw err;
-      // DB errors on blacklist write are non-fatal — log and continue rather
-      // than blocking the user from refreshing. The 30-day JWT TTL is still
-      // the backstop; a missed blacklist write is a minor risk window.
       authLogger.warn('Could not blacklist refresh token (non-fatal)', { jti: payload.jti, error: (err as Error).message });
     }
   }
@@ -252,9 +254,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthToke
   authLogger.info('Tokens refreshed', { userId: user.id });
   const tokens = generateTokens(user);
 
-  // Cache under the consumed JTI so concurrent middleware/client calls within
-  // the grace window get the same token pair instead of triggering reuse detection.
-  if (payload.jti) {
+  // Only populate the grace cache when the blacklist write succeeded.
+  // If the write failed, the JTI was never persisted — caching it here
+  // would let concurrent requests bypass reuse detection for free.
+  if (payload.jti && blacklistConfirmed) {
     _refreshGrace.set(payload.jti, { tokens, expiresAt: Date.now() + REFRESH_GRACE_MS });
     setTimeout(() => _refreshGrace.delete(payload.jti!), REFRESH_GRACE_MS);
   }

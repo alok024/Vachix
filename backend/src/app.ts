@@ -8,7 +8,7 @@ import { env, IS_PROD }              from './core/config/env';
 import { errorHandler }              from './core/middleware';
 import { unauthorized, notFound }     from './core/utils/response';
 import { logger }                    from './infra/logger';
-import { scheduleSubscriptionExpiry, scheduleSessionExpiry } from './infra/queue/dispatcher';
+import { scheduleSubscriptionExpiry, scheduleSessionExpiry, scheduleBlacklistCleanup } from './infra/queue/dispatcher';
 import { initSentry, captureException, getMetrics } from './infra/observability';
 import { startLoadMonitor, getSystemLoadStats }      from './infra/load-monitor';
 import { getAILimiterStats }                         from './infra/ai-limiter';
@@ -55,6 +55,7 @@ const PROD_ORIGINS = [
   'https://www.vachix.in',
   'https://vachixindia.pages.dev',
   'https://vachixindia.vercel.app',
+  'https://vachix.pages.dev',
 ];
 
 const DEV_ORIGINS = [
@@ -256,6 +257,10 @@ app.listen(PORT, () => {
   scheduleSessionExpiry().catch(err =>
     logger.error('Failed to schedule session expiry', { error: err })
   );
+
+  // Nightly cleanup of expired token_blacklist rows to prevent unbounded
+  // table growth and keep isTokenBlacklisted() fast under heavy auth load.
+  scheduleBlacklistCleanup();
 });
 
 export default app;

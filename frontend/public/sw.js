@@ -7,7 +7,7 @@
  *  - Pages: Network-first with offline page fallback
  */
 
-const CACHE_NAME = 'speaksmart-v1';
+const CACHE_NAME = 'vachix-v1';
 
 const PRECACHE_URLS = [
   '/',

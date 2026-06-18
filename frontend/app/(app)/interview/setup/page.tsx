@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useInterviewStore } from '@/store/interview';
 import { useAuthStore } from '@/store/auth';
 import { useUIStore } from '@/store/ui';
+import { useMe } from '@/hooks/queries';
 import { Button, Card, ChipGroup, Input } from '@/components/ui';
 import { Difficulty, InterviewType, SessionMode } from '@/types';
 
@@ -68,6 +69,7 @@ function InterviewSetupPageInner() {
   const params = useSearchParams();
   const { user } = useAuthStore();
   const { showUpgradeModal } = useUIStore();
+  const { data: meData } = useMe();
   const store = useInterviewStore();
 
   const [customProfession, setCustomProfession] = useState('');
@@ -83,7 +85,9 @@ function InterviewSetupPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
-  const isFree      = !user || (user.plan !== 'pro' && user.plan !== 'elite');
+  // Use live /me plan so an upgrade takes effect without a page refresh.
+  const livePlan    = meData?.user?.plan ?? user?.plan;
+  const isFree      = !livePlan || (livePlan !== 'pro' && livePlan !== 'elite');
   const aiCallsLeft = useAuthStore((s) => s.aiCallsLeft());
   const isLocked    = isFree && aiCallsLeft <= 0;
   const selectedProfession = store.config.profession;

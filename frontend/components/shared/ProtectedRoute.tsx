@@ -77,15 +77,13 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
     const accountCreated   = user.created_at ? new Date(user.created_at) : null;
     const isPreLaunchUser  = accountCreated !== null && accountCreated < onboardingLaunch;
 
-    // ONBOARDING GATE — disabled temporarily.
-    // Onboarding was launched Jun 16 2026 but many accounts (including all
-    // accounts created while SMTP was broken) never completed it because
-    // they could not verify email / were created before the feature.
-    // Re-enable once existing users have been backfilled via SQL migration.
-    //
-    // if (!user.onboarding_completed_at && !isProfilePage && !isPaidUser && !isPreLaunchUser) {
-    //   router.replace('/profile?onboarding=1');
-    // }
+    // ONBOARDING GATE — bounces new users to profile setup before they
+    // can access any protected page. Exempt: the profile page itself
+    // (avoids a redirect loop), paid users, and accounts created before
+    // onboarding launched (Jun 16 2026) that were never prompted.
+    if (!user.onboarding_completed_at && !isProfilePage && !isPaidUser && !isPreLaunchUser) {
+      router.replace('/profile?onboarding=1');
+    }
   }, [user, router, pathname, requireAdmin]);
 
   // While /me is in flight (and we have nothing cached yet) or it
