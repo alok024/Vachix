@@ -8,6 +8,7 @@
  * feature's `api/index.ts` (see `features/README.md`).
  */
 import type { ApiResult } from '@/types';
+import { useAuthStore } from '@/store/auth';
 
 // M13: previously fell straight through to the production Railway URL
 // whenever NEXT_PUBLIC_BACKEND_URL was unset, so a developer who forgot
@@ -78,6 +79,11 @@ export async function apiCall<T = unknown>(
       const now = Date.now();
       const cooldownActive = now - _lastRefreshAt < REFRESH_COOLDOWN_MS;
 
+      // Snapshot the user this request started with — if login/logout
+      // races ahead of this refresh, we don't want to clear a session
+      // that isn't this one anymore.
+      const userAtRequestStart = useAuthStore.getState().user;
+
       if (!cooldownActive) {
         // Deduplicate concurrent refresh requests — only one fetch to
         // /api/refresh-token goes out regardless of how many parallel
@@ -101,12 +107,25 @@ export async function apiCall<T = unknown>(
         return apiCall<T>(endpoint, method, body, false);
       }
 
-      // Refresh failed — redirect to login, preserving where the user was
-      // so they land back there after re-authenticating instead of being
-      // dumped at /dashboard.
-      if (typeof window !== 'undefined') {
-        const next = encodeURIComponent(window.location.pathname + window.location.search);
-        window.location.href = `/login?next=${next}`;
+      // Refresh is dead — real cookie's gone, nothing left to retry.
+      // Clear the cached user so isAuthenticated() stops lying, otherwise
+      // every gated query (UpgradeModal's useMe, etc.) keeps re-firing
+      // this same 401 and we loop on /login forever.
+      //
+      // Only do it if the session hasn't changed since we started —
+      // a login that landed mid-flight already has its own valid user,
+      // don't stomp it.
+      const sessionUnchanged = useAuthStore.getState().user === userAtRequestStart;
+
+      if (typeof window !== 'undefined' && sessionUnchanged) {
+        useAuthStore.getState().clearSession();
+
+        // Already on /login — nowhere to redirect to, and trying anyway
+        // is exactly what causes the loop.
+        if (window.location.pathname !== '/login') {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?next=${next}`;
+        }
       }
       return {
         ok: false,
