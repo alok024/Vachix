@@ -18,6 +18,7 @@ const FAQS = [
   { q: 'Do I need to speak aloud, or can I type my answers?', a: 'Both work. You can type or speak — if your device has a microphone, Vachix will transcribe your answer in real time. Elara then analyses whichever form she receives.' },
   { q: 'Is it useful if my English is already decent?', a: 'Yes — Elara catches the subtle mistakes standard spell-checkers miss: "myself is", "I am having experience", prepositional errors, and bureaucratic phrases that weaken interview impact.' },
   { q: 'Which exams does the interview coach cover?', a: 'UPSC/IAS, Bank PO (IBPS & SBI), SSC CGL/CHSL, Railway (RRB), Defence (NDA/CDS), Software Engineering, Data Science, Product Management, Campus Placements, Teaching, and Healthcare. New tracks are added regularly.' },
+  { q: 'What is the Starter plan and who is it for?', a: 'Starter is ₹299/month and gives you 30 AI interview sessions per month across all 11 exam tracks, Elara English correction, and AI memory on your recurring mistakes. It\'s ideal if you want consistent practice without committing to the full Pro plan.' },
   { q: 'Can I cancel my subscription at any time?', a: 'Yes. Cancel from your profile page and you keep access until the end of the billing period. No questions asked, no hidden fees.' },
   { q: 'Is my data private?', a: 'Your interview sessions and corrections are stored only to generate your progress analytics. We do not share your data with third parties.' },
   { q: 'How is Vachix different from other interview prep apps?', a: 'Most prep apps focus on what you know. Vachix also trains how you say it — the live correction loop and real-time language coaching is unique to us.' },
@@ -614,7 +615,7 @@ export default function LandingPage() {
           </div>
           <div className="ssi-faq-list">
             {FAQS.map((f, i) => (
-              <div key={i} className={`ssi-fi ssi-rv${openFaq === i ? ' open' : ''}`}>
+              <div key={i} className={`ssi-fi${openFaq === i ? ' open' : ''}`}>
                 <button className="ssi-fb" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
                   <span>{f.q}</span><span className="ssi-fi-icon">+</span>
                 </button>

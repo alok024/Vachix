@@ -347,6 +347,8 @@
 .ssi-faq-list{margin-top:48px;display:flex;flex-direction:column;gap:4px;max-width:760px;margin-left:auto;margin-right:auto}
 .ssi-fi{border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .3s}
 .ssi-fi.open{border-color:var(--border2)}
+/* Open state must always be fully visible regardless of scroll-reveal state */
+.ssi-fi.open,.ssi-fi.open .ssi-rv,.ssi-fi.open .ssi-rvl,.ssi-fi.open .ssi-rvr{opacity:1;transform:none}
 .ssi-fb{width:100%;background:none;border:none;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text1);text-align:left}
 .ssi-fi-icon{font-size:20px;color:var(--accent);transition:transform .3s;flex-shrink:0}
 .ssi-fi.open .ssi-fi-icon{transform:rotate(45deg)}

@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { useUIStore } from '@/store/ui';
 import { Button, Card, CardHeader, CardBody, Badge, ProgressBar, Spinner } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
-import { LogOut, Crown, Diamond } from 'lucide-react';
+import { LogOut, Crown, Diamond, Zap } from 'lucide-react';
 import { QK } from '@/lib/query-keys';
 
 const PROFESSIONS = [
@@ -197,16 +197,23 @@ function ProfilePageInner() {
         </Card>
       )}
 
-      {/* Upgrade CTA — anyone with a finite session cap (Free, Starter) */}
+      {/* Upgrade CTA — free users see Starter + Pro + Elite; Starter users see Pro + Elite */}
       {hasUsageCap && (
         <Card className="p-5" style={{ borderColor: 'var(--blue-border)' }}>
           <div className="text-sm font-bold mb-1" style={{ color: 'var(--text-1)' }}>🚀 Unlock unlimited practice</div>
           <p className="text-xs mb-4" style={{ color: 'var(--text-3)' }}>
             {isStarter
-              ? 'Pro gives you unlimited AI sessions, full session history, and advanced analytics.'
-              : 'Pro gives you unlimited AI sessions, full session history, advanced analytics, and HD voice.'}
+              ? 'Upgrade to Pro for unlimited AI sessions, full session history, and HD voice.'
+              : 'Choose a plan to get more sessions, HD voice, and advanced analytics.'}
           </p>
           <div className="space-y-2">
+            {/* Starter option — only shown to Free users */}
+            {isFree && (
+              <Button variant="upgrade" className="w-full" onClick={() => showUpgradeModal('strip')}>
+                <Zap className="w-4 h-4" />
+                Starter — ₹299/month
+              </Button>
+            )}
             <Button variant="upgrade" className="w-full" onClick={() => showUpgradeModal('strip')}>
               <Crown className="w-4 h-4" />
               Pro — ₹699/month
