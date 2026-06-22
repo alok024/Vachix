@@ -10,6 +10,7 @@ import {
 import { trackEvent } from './events.service';
 import { getOrCreateReferralCode } from '../growth/referral.service';
 import { CreateSessionSchema, PaginationSchema, ScoreHistoryQuerySchema } from '../../core/utils/schemas';
+import { db } from '../../core/database/client';
 
 // POST /api/sessions
 export const createSession = asyncHandler(async (req: Request, res: Response) => {
@@ -128,6 +129,31 @@ export const scoreHistory = asyncHandler(async (req: Request, res: Response) => 
 
   const scoreHistoryData = await getScoreHistory(req.user!.id, parsed.data.limit);
   ok(res, { history: scoreHistoryData });
+});
+
+// GET /api/sessions/readiness-report  (Starter+ gated — see requireStarterTier)
+// Returns the most recent Interview Readiness Report checkpoint, plus
+// how many more sessions until the next one. report: null is a normal
+// state — e.g. a brand-new Starter subscriber with < 5 sessions so far.
+export const getReadinessReport = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const [report, stats] = await Promise.all([
+    db.getLatestReadinessReport(userId),
+    db.getStats(userId),
+  ]);
+
+  const totalSessions = stats?.sessions ?? 0;
+  // Sessions remaining until the next checkpoint (5, 10, 15, ...).
+  // e.g. totalSessions=7  → 3 more until 10.  totalSessions=10 → 5 more until 15.
+  const remainder = totalSessions % 5;
+  const sessionsUntilNext = remainder === 0 ? 5 : 5 - remainder;
+
+  ok(res, {
+    report:                     report ?? null,
+    total_sessions:             totalSessions,
+    sessions_until_next_report: sessionsUntilNext,
+  });
 });
 
 // GET /api/sessions/:id

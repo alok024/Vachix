@@ -47,14 +47,14 @@ export const ResendVerificationSchema = z.object({
 // Payment
 
 export const CreateOrderSchema = z.object({
-  plan: z.enum(['pro', 'elite']),
+  plan: z.enum(['starter', 'pro', 'elite']),
 });
 
 export const VerifyPaymentSchema = z.object({
   razorpay_order_id:   z.string().min(1),
   razorpay_payment_id: z.string().min(1),
   razorpay_signature:  z.string().min(1),
-  plan:                z.enum(['pro', 'elite']),
+  plan:                z.enum(['starter', 'pro', 'elite']),
 });
 
 // AI

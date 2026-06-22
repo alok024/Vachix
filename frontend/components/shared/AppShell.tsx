@@ -77,8 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isFree  = !user?.plan || (user.plan !== 'pro' && user.plan !== 'elite');
   const planLabel =
-    user?.plan === 'elite' ? '◈ Elite' :
-    user?.plan === 'pro'   ? '✦ Pro'   : 'Free';
+    user?.plan === 'elite'   ? '◈ Elite' :
+    user?.plan === 'pro'     ? '✦ Pro'   :
+    user?.plan === 'starter' ? '⚡ Starter' : 'Free';
   const name   = user?.name || user?.email?.split('@')[0] || '?';
   const avatar = name[0].toUpperCase();
 

@@ -11,7 +11,7 @@ ALTER TABLE users
 -- ============================================================
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id     bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash  text        NOT NULL,
   expires_at  timestamptz NOT NULL,
   used        boolean     NOT NULL DEFAULT false,
@@ -38,7 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_evt_expires_at
 -- ============================================================
 CREATE TABLE IF NOT EXISTS email_verification_sends (
   id       uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id  uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id  bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   sent_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -111,7 +111,7 @@ $$;
 -- Usage (from Node/Python/etc.):
 --   CALL invalidate_previous_tokens($1)   -- $1 = user_id
 -- ============================================================
-CREATE OR REPLACE PROCEDURE invalidate_previous_tokens(p_user_id uuid)
+CREATE OR REPLACE PROCEDURE invalidate_previous_tokens(p_user_id bigint)
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
@@ -131,7 +131,7 @@ $$;
 --   → true  → block; respond 429
 --   → false → allow; insert row + send email
 -- ============================================================
-CREATE OR REPLACE FUNCTION check_resend_rate_limit(p_user_id uuid)
+CREATE OR REPLACE FUNCTION check_resend_rate_limit(p_user_id bigint)
 RETURNS boolean
 LANGUAGE sql
 STABLE

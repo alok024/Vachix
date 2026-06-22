@@ -132,6 +132,10 @@ function InterviewSetupPageInner() {
   // Use live /me plan so an upgrade takes effect without a page refresh.
   const livePlan    = meData?.user?.plan ?? user?.plan;
   const isFree      = !livePlan || (livePlan !== 'pro' && livePlan !== 'elite');
+  // Starter (and above) gets the real, ledger-metered /tts endpoint
+  // (VOICE_CAP_STARTER seconds/month) instead of the once-a-day free
+  // taste — they're paying for capped HD voice, not a daily sample.
+  const hasVoiceQuota = livePlan === 'starter' || livePlan === 'pro' || livePlan === 'elite';
   const aiCallsLeft = useAuthStore((s) => s.aiCallsLeft());
   const isLocked    = isFree && aiCallsLeft <= 0;
   const selectedProfession = store.config.profession;
@@ -142,9 +146,9 @@ function InterviewSetupPageInner() {
   }
 
   // Voice "warm-up" — Easy build item. Free tier gets the once-per-IST-day
-  // warm-up endpoint; Pro/Elite get the full (unlimited) TTS endpoint
-  // since they already have unlimited HD voice — no reason to burn their
-  // one daily "taste" slot on a feature they already fully own.
+  // warm-up endpoint; Starter/Pro/Elite get the real (ledger-metered) TTS
+  // endpoint since they're paying for HD voice, capped by plan (Starter
+  // 10 min/mo, Pro 60 min/mo, Elite unlimited — see VOICE_CAP_* in env.ts).
   async function playVoicePreview() {
     if (previewLoading) return;
     setPreviewLoading(true);
@@ -157,14 +161,14 @@ function InterviewSetupPageInner() {
     // (Switching language still needs a fresh fetch since the cached
     // blob is for the old language; hasPreviewedToday only short-circuits
     // a repeat tap of the same preview.)
-    if (isFree && hasPreviewedToday && audioRef.current && audioRef.current.dataset.lang === store.config.lang) {
+    if (!hasVoiceQuota && hasPreviewedToday && audioRef.current && audioRef.current.dataset.lang === store.config.lang) {
       setPreviewLoading(false);
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
       return;
     }
 
-    if (isFree) {
+    if (!hasVoiceQuota) {
       const result = await voiceApi.ttsWarmup(sample);
       setPreviewLoading(false);
 
@@ -183,7 +187,8 @@ function InterviewSetupPageInner() {
       return;
     }
 
-    // Pro/Elite — full voice pipeline, language-aware (Sarvam for hi/hinglish).
+    // Starter/Pro/Elite — real voice pipeline, language-aware (Sarvam for hi/hinglish).
+    // Metered server-side by requireVoiceQuota; not unlimited below Elite.
     const blob = await voiceApi.tts(sample, store.config.lang);
     setPreviewLoading(false);
     if (!blob) {
@@ -347,7 +352,8 @@ function InterviewSetupPageInner() {
             </div>
 
             {/* Voice "warm-up" — Easy build item. ~30s HD voice taste,
-                available on Free tier too (once/day server-side gate). */}
+                available on Free tier too (once/day server-side gate);
+                Starter+ get the real metered endpoint instead. */}
             <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <button
                 type="button"
@@ -358,10 +364,10 @@ function InterviewSetupPageInner() {
               >
                 {previewLoading ? (
                   <>🔊 Loading preview…</>
-                ) : isFree && hasPreviewedToday ? (
+                ) : !hasVoiceQuota && hasPreviewedToday ? (
                   <>🔊 Replay preview</>
                 ) : (
-                  <>🔊 Preview HD voice {isFree ? '(free taste)' : ''}</>
+                  <>🔊 Preview HD voice {!hasVoiceQuota ? '(free taste)' : ''}</>
                 )}
               </button>
               {previewMsg && (

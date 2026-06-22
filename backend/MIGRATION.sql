@@ -45,7 +45,7 @@ ALTER TABLE sessions
 -- Receives only per-session deltas; Postgres applies them under a row lock.
 
 CREATE OR REPLACE FUNCTION increment_user_stats(
-  p_user_id     uuid,
+  p_user_id     bigint,
   p_score       numeric,
   p_job_ready   numeric,
   p_total_score numeric
@@ -160,7 +160,7 @@ ALTER TABLE usage
 -- Atomic INSERT … ON CONFLICT eliminates the read-then-write race where
 -- two concurrent AI requests both see the same call_count and each write
 -- call_count + 1, effectively losing one count.
-CREATE OR REPLACE FUNCTION increment_usage(p_user_id uuid)
+CREATE OR REPLACE FUNCTION increment_usage(p_user_id bigint)
 RETURNS void LANGUAGE sql AS $$
   INSERT INTO usage (user_id, call_count, updated_at)
   VALUES (p_user_id, 1, now())

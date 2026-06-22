@@ -137,8 +137,9 @@ function AdminDashboard() {
                         <td className="px-4 py-3 text-white/60">{u.email}</td>
                         <td className="px-4 py-3">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            u.plan === 'elite' ? 'bg-purple-500/20 text-purple-400' :
-                            u.plan === 'pro'   ? 'bg-[#4F8EF7]/20 text-[#4F8EF7]' :
+                            u.plan === 'elite'   ? 'bg-purple-500/20 text-purple-400' :
+                            u.plan === 'pro'     ? 'bg-[#4F8EF7]/20 text-[#4F8EF7]' :
+                            u.plan === 'starter' ? 'bg-green-500/20 text-green-400' :
                             'bg-white/[0.06] text-white/40'
                           }`}>
                             {u.plan}

@@ -72,6 +72,17 @@ export function startBackgroundWorker(): Worker | null {
           break;
         }
 
+        // Interview Readiness Report — every-5-sessions rollup summary
+        case 'generate-readiness-report': {
+          const { generateReadinessReport } =
+            await import('../../modules/analytics/readiness-report.service');
+          await generateReadinessReport(
+            job.data.userId,
+            job.data.sessionCount
+          );
+          break;
+        }
+
         // Retry-persist a batch of analytics events
         case 'persist-analytics-events': {
           const { db } = await import('../../core/database/client');

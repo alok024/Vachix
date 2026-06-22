@@ -6,7 +6,7 @@ import { useCreateOrder, useVerifyPayment } from '@/features/payment/hooks';
 import { useMe } from '@/features/user/hooks';
 import { extractErrorMessage } from '@/lib/api';
 import { Button, Badge, Spinner } from '@/components/ui';
-import { X, Infinity, History, BarChart, Zap, Crown, Diamond } from 'lucide-react';
+import { X, Infinity, History, BarChart, Zap, Crown, Diamond, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 declare global {
@@ -40,7 +40,7 @@ const FEATURES = [
 
 const REASON_MSGS: Record<string, string> = {
   limit_hit:       '🚫 You\'ve reached your free session limit',
-  voice_fallback:  '🔊 HD voice requires Pro',
+  voice_fallback:  '🔊 HD voice requires Starter or higher',
   feature_lock:    '🔒 This feature is available on Pro',
   session_end:     '✨ You\'re on a roll — keep practicing!',
   strip:           '⚡ Running low on sessions',
@@ -51,7 +51,7 @@ export function UpgradeModal() {
   const { upgradeModalOpen, upgradeTrigger, closeUpgradeModal, showToast } = useUIStore();
   const { user }         = useAuthStore();
   const [error, setError]   = useState('');
-  const [loading, setLoading] = useState<'pro' | 'elite' | null>(null);
+  const [loading, setLoading] = useState<'starter' | 'pro' | 'elite' | null>(null);
 
   const createOrder   = useCreateOrder();
   const verifyPayment = useVerifyPayment();
@@ -62,7 +62,7 @@ export function UpgradeModal() {
   const calls      = meData?.usage?.ai_calls ?? user?.ai_calls ?? 0;
   const FREE_LIMIT = meData?.usage?.limit ?? user?.ai_calls_limit ?? null;
 
-  async function handleUpgrade(plan: 'pro' | 'elite') {
+  async function handleUpgrade(plan: 'starter' | 'pro' | 'elite') {
     setError('');
     setLoading(plan);
     try {
@@ -84,7 +84,7 @@ export function UpgradeModal() {
       const rzp = new window.Razorpay({
         key, amount, currency, order_id,
         name: 'Vachix',
-        description: `${plan === 'pro' ? 'Pro' : 'Elite'} Plan — ₹${plan === 'pro' ? '699' : '1,299'}/month`,
+        description: `${plan === 'starter' ? 'Starter' : plan === 'pro' ? 'Pro' : 'Elite'} Plan — ₹${plan === 'starter' ? '299' : plan === 'pro' ? '699' : '1,299'}/month`,
         prefill: { email: user?.email ?? '', name: user?.name ?? '' },
         // Accent from the brand, not hardcoded blue
         theme: { color: '#9b7fff' },
@@ -101,7 +101,7 @@ export function UpgradeModal() {
         handler: async (response) => {
           const vRes = await verifyPayment.mutateAsync({ ...response, plan });
           if (vRes.ok) {
-            const planLabel = plan === 'pro' ? 'Pro' : 'Elite';
+            const planLabel = plan === 'starter' ? 'Starter' : plan === 'pro' ? 'Pro' : 'Elite';
             showToast(`🎉 Welcome to ${planLabel}! Your account has been upgraded.`, { duration: 8000 });
             closeUpgradeModal();
           } else {
@@ -138,7 +138,7 @@ export function UpgradeModal() {
         {/* Header */}
         <div className="text-center mb-6">
           <span className="text-4xl mb-3 block">🚀</span>
-          <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--text-1)' }}>Upgrade to Pro</h2>
+          <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--text-1)' }}>Unlock More Sessions</h2>
 
           {/* Usage display */}
           <div
@@ -146,7 +146,7 @@ export function UpgradeModal() {
             style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
           >
             <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--accent)' }}>{calls}</span>
-            <span className="text-sm" style={{ color: 'var(--text-3)' }}>of {FREE_LIMIT ?? '∞'} free sessions used</span>
+            <span className="text-sm" style={{ color: 'var(--text-3)' }}>of {FREE_LIMIT ?? '∞'} sessions used</span>
           </div>
 
           {upgradeTrigger && REASON_MSGS[upgradeTrigger] && (
@@ -161,7 +161,7 @@ export function UpgradeModal() {
 
         {/* Features list */}
         <p className="text-sm text-center mb-5" style={{ color: 'var(--text-3)' }}>
-          Upgrade for <strong style={{ color: 'var(--text-1)' }}>unlimited AI interviews</strong> and unlock your full potential.
+          Pick the plan that fits your prep pace.
         </p>
         <div className="space-y-2 mb-6">
           {FEATURES.map((f) => (
@@ -185,16 +185,27 @@ export function UpgradeModal() {
           </p>
         )}
 
-        {/* CTAs */}
+        {/* CTAs — the plan the user is already on is hidden so they can't
+            accidentally re-purchase (and re-charge) it from this modal. */}
         <div className="space-y-3">
-          <Button variant="upgrade" size="lg" className="w-full" loading={loading === 'pro'} disabled={!!loading} onClick={() => handleUpgrade('pro')}>
-            <Crown className="w-4 h-4" />
-            Pro — ₹699/month · Unlimited + AI Chat
-          </Button>
-          <Button variant="upgrade" size="lg" className="w-full" loading={loading === 'elite'} disabled={!!loading} onClick={() => handleUpgrade('elite')}>
-            <Diamond className="w-4 h-4" />
-            Elite — ₹1,299/month · Everything + Priority AI
-          </Button>
+          {user?.plan !== 'starter' && (
+            <Button variant="secondary" size="lg" className="w-full" loading={loading === 'starter'} disabled={!!loading} onClick={() => handleUpgrade('starter')}>
+              <Sparkles className="w-4 h-4" />
+              Starter — ₹299/month · 30 sessions
+            </Button>
+          )}
+          {user?.plan !== 'pro' && (
+            <Button variant="upgrade" size="lg" className="w-full" loading={loading === 'pro'} disabled={!!loading} onClick={() => handleUpgrade('pro')}>
+              <Crown className="w-4 h-4" />
+              Pro — ₹699/month · Unlimited + AI Chat
+            </Button>
+          )}
+          {user?.plan !== 'elite' && (
+            <Button variant="upgrade" size="lg" className="w-full" loading={loading === 'elite'} disabled={!!loading} onClick={() => handleUpgrade('elite')}>
+              <Diamond className="w-4 h-4" />
+              Elite — ₹1,299/month · Everything + Priority AI
+            </Button>
+          )}
         </div>
 
         <button

@@ -21,7 +21,7 @@
 -- p_max explicitly (env.MAX_REFERRAL_BONUS_CALLS, default 50).
 
 CREATE OR REPLACE FUNCTION increment_referral_bonus(
-  p_user_id uuid,
+  p_user_id bigint,
   p_amount  integer,
   p_max     integer DEFAULT 2147483647
 ) RETURNS jsonb LANGUAGE plpgsql AS $$

@@ -23,3 +23,9 @@ export interface RecomputeWeakAreasData {
 export interface ExpireSubscriptionsData {
   triggeredAt: string; // ISO — for logging only
 }
+
+// generate-readiness-report
+export interface GenerateReadinessReportData {
+  userId:       string;
+  sessionCount: number;
+}

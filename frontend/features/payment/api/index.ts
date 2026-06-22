@@ -15,7 +15,7 @@ import type {
 const TEST_MODE = process.env.NEXT_PUBLIC_RAZORPAY_TEST_MODE === 'true';
 
 export const paymentApi = {
-  createOrder: (plan: 'pro' | 'elite') =>
+  createOrder: (plan: 'starter' | 'pro' | 'elite') =>
     apiCall<CreateOrderResponse>(
       `/payment/create-order${TEST_MODE ? '?mode=test' : ''}`,
       'POST',

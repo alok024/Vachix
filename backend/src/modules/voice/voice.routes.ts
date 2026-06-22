@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { authMiddleware, requireVerified, requirePro, validate } from '../../core/middleware';
+import { authMiddleware, requireVerified, requireVoiceTier, validate } from '../../core/middleware';
 import { textToSpeech, textToSpeechWarmup } from './voice.controller';
+import { requireVoiceQuota } from './voice.ledger';
 
 const router = Router();
 
@@ -37,14 +38,15 @@ const WarmupSchema = z.object({
 router.post('/tts',
   authMiddleware,
   requireVerified,
-  requirePro,       // 🔒 Pro/Elite only — free users get browser speechSynthesis
+  requireVoiceTier,  // 🔒 Starter/Pro/Elite — free users get browser speechSynthesis
+  requireVoiceQuota, // 🔒 monthly voice-minute cap (ledger gate — migration 011)
   ttsLimiter,
   validate(TtsSchema),
   textToSpeech,
 );
 
 // Voice "warm-up" — Easy build item. Available to Free-tier users too
-// (intentionally no requirePro), gated instead by a once-per-IST-day
+// (intentionally no requireVoiceTier), gated instead by a once-per-IST-day
 // Redis check inside the controller.
 router.post('/tts/warmup',
   authMiddleware,

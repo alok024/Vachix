@@ -31,8 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
 -- (db.getPendingReferralEvent / db.markReferralRewarded).
 CREATE TABLE IF NOT EXISTS referral_events (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  referrer_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  referred_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referrer_id  bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referred_id  bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   rewarded_at  timestamptz,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
@@ -51,7 +51,7 @@ ALTER TABLE referral_events
 -- Called as: POST /rest/v1/rpc/increment_referral_bonus
 --   body: { p_user_id: <referrer uuid>, p_amount: <REFERRAL_BONUS_CALLS> }
 CREATE OR REPLACE FUNCTION increment_referral_bonus(
-  p_user_id uuid,
+  p_user_id bigint,
   p_amount  integer
 ) RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE

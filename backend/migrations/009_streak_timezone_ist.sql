@@ -34,7 +34,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION increment_user_stats(
-  p_user_id     uuid,
+  p_user_id     bigint,
   p_score       numeric,
   p_job_ready   numeric,
   p_total_score numeric

@@ -288,7 +288,7 @@ export async function requireOnboarded(
     // Paid users (pro/elite) and pre-launch accounts are exempt from the
     // onboarding gate — they either predated the feature or paid without
     // completing it. Blocking them from AI calls would break their experience.
-    const isPaid = dbUser?.plan === 'pro' || dbUser?.plan === 'elite';
+    const isPaid = dbUser?.plan === 'pro' || dbUser?.plan === 'elite' || dbUser?.plan === 'starter';
     const onboardingLaunch = new Date('2026-06-16T00:00:00Z');
     const createdAt = dbUser?.created_at ? new Date(dbUser.created_at) : null;
     const isPreLaunchUser = createdAt !== null && createdAt < onboardingLaunch;
@@ -336,7 +336,7 @@ export async function requirePro(
   try {
     const dbUser = await db.getUserById(user.id);
     const plan   = (dbUser?.plan ?? 'free') as PlanType;
-    if (plan === 'free') {
+    if (plan !== 'pro' && plan !== 'elite') {
       // Track the upsell moment so we can measure voice → upgrade conversion.
       // Fire-and-forget — never blocks the rejection.
       trackEvent({
@@ -355,6 +355,84 @@ export async function requirePro(
     next();
   } catch (err) {
     log.error('requirePro DB check failed', { userId: user.id, err });
+    next(err);
+  }
+}
+
+// Generic Starter+ guard
+// Place after authMiddleware. Same plan check as requireVoiceTier (Starter,
+// Pro, Elite all pass), but for non-voice Starter+ features — e.g. the
+// Interview Readiness Report (every-5-sessions rollup summary). Kept
+// separate from requireVoiceTier rather than reused directly so the
+// upsell event/message stays accurate per feature instead of always
+// saying "HD voice" for things that aren't voice.
+// Always checks DB so downgrades are instant, same as requireVoiceTier/requirePro.
+
+export async function requireStarterTier(
+  req: Request, res: Response, next: NextFunction
+): Promise<void> {
+  const user = req.user!;
+  try {
+    const dbUser = await db.getUserById(user.id);
+    const plan   = (dbUser?.plan ?? 'free') as PlanType;
+    if (plan !== 'starter' && plan !== 'pro' && plan !== 'elite') {
+      trackEvent({
+        event:  'upsell_shown',
+        userId: user.id,
+        plan,
+        properties: { trigger: 'readiness_report', path: req.path },
+      });
+      forbidden(
+        res,
+        'The Interview Readiness Report requires Starter or higher. Upgrade to unlock your rolling readiness summary.',
+        'starter_tier_required',
+      );
+      return;
+    }
+    next();
+  } catch (err) {
+    log.error('requireStarterTier DB check failed', { userId: user.id, err });
+    next(err);
+  }
+}
+
+// Voice-tier guard
+// Place after authMiddleware. Gates the metered HD-voice endpoint
+// (/api/voice/tts) to any paying plan — Starter, Pro, and Elite — while
+// the true Free tier stays on the once-per-day warm-up route instead.
+// Distinct from requirePro (which stays Pro/Elite-only for genuinely
+// Pro+-exclusive features like full session history) because the voice
+// usage ledger (migration 011_voice_usage_ledger.sql) already defines a
+// real, metered Starter allowance via VOICE_CAP_STARTER — Starter users
+// have paid for capped HD voice, not the once-a-day free taste.
+// Always checks DB so downgrades are instant, same as requirePro.
+
+export async function requireVoiceTier(
+  req: Request, res: Response, next: NextFunction
+): Promise<void> {
+  const user = req.user!;
+  try {
+    const dbUser = await db.getUserById(user.id);
+    const plan   = (dbUser?.plan ?? 'free') as PlanType;
+    if (plan !== 'starter' && plan !== 'pro' && plan !== 'elite') {
+      // Track the upsell moment so we can measure voice → upgrade conversion.
+      // Fire-and-forget — never blocks the rejection.
+      trackEvent({
+        event:  'upsell_shown',
+        userId: user.id,
+        plan,
+        properties: { trigger: 'hd_voice', path: req.path },
+      });
+      forbidden(
+        res,
+        'HD voice requires Starter or higher. Upgrade to hear Aria and Elara speak their feedback.',
+        'voice_tier_required',
+      );
+      return;
+    }
+    next();
+  } catch (err) {
+    log.error('requireVoiceTier DB check failed', { userId: user.id, err });
     next(err);
   }
 }

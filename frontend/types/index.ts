@@ -1,6 +1,6 @@
 // Core domain types — mirror backend exactly
 
-export type Plan = 'free' | 'pro' | 'elite';
+export type Plan = 'free' | 'starter' | 'pro' | 'elite';
 export type SessionMode = 'classic' | 'chat';
 export type Difficulty = 'beginner' | 'intermediate' | 'expert';
 export type InterviewType = 'Technical' | 'Behavioral' | 'Mixed';

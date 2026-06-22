@@ -11,7 +11,7 @@
 
 CREATE TABLE IF NOT EXISTS analytics_events (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid REFERENCES users(id) ON DELETE SET NULL,
+  user_id     bigint REFERENCES users(id) ON DELETE SET NULL,
   session_id  text,
   event       text NOT NULL,
   path        text,

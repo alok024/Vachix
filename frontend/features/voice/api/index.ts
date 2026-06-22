@@ -13,8 +13,8 @@ export type WarmupResult =
   | { ok: false; reason: 'already_used_today' | 'not_configured' | 'error' };
 
 export const voiceApi = {
-  // Pro/Elite — full TTS. `lang` selects ElevenLabs (en) vs Sarvam
-  // Bulbul v3 (hi/hinglish); omit for the existing English-only behaviour.
+  // Starter/Pro/Elite — real (ledger-metered) TTS. `lang` selects ElevenLabs
+  // (en) vs Sarvam Bulbul v3 (hi/hinglish); omit for English-only behaviour.
   tts: async (text: string, lang?: VoiceLang): Promise<Blob | null> => {
     try {
       const res = await fetch('/api/voice/tts', {

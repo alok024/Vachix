@@ -4,6 +4,12 @@ import { env } from '../../core/config/env';
 import { badRequest, fail } from '../../core/utils/response';
 import { getRedis } from '../../infra/queue/redis';
 import { logger } from '../../infra/logger';
+import { debitVoiceSeconds } from './voice.ledger';
+import {
+  checkBreaker,
+  recordSuccess,
+  recordFailure,
+} from '../../infra/sarvam-circuit-breaker';
 
 const log = logger.child({ module: 'voice' });
 
@@ -55,11 +61,14 @@ async function streamElevenLabsSpeech(res: Response, text: string): Promise<void
 // so this buffers and decodes rather than piping like the ElevenLabs path.
 // See https://docs.sarvam.ai/api-reference-docs/api-guides-tutorials/text-to-speech/rest-api
 //
+// When env.SARVAM_PRIMARY=true, this function is also called for English
+// with lang_code=en-IN (Indian-English accent on Bulbul v3).
+//
 // Returns true if it successfully wrote the response, false if the
 // caller should fall back to another engine. On false, this function is
 // guaranteed not to have written anything to `res` yet — safe to retry
 // with a different engine.
-async function streamSarvamSpeech(res: Response, text: string): Promise<boolean> {
+async function streamSarvamSpeech(res: Response, text: string, langCode: string): Promise<boolean> {
   if (!env.SARVAM_API_KEY) return false;
 
   // `Response` in this file's scope is Express's type (imported above for
@@ -75,10 +84,9 @@ async function streamSarvamSpeech(res: Response, text: string): Promise<boolean>
       },
       body: JSON.stringify({
         text,
-        // Bulbul v3 handles English-words-inside-Hindi-sentences (Hinglish)
-        // natively under hi-IN — there's no separate "hinglish" language
-        // code, the model infers the mix from the text itself.
-        target_language_code: 'hi-IN',
+        // langCode is caller-supplied: 'hi-IN' for Hindi/Hinglish (original
+        // behaviour), 'en-IN' for English when SARVAM_PRIMARY=true.
+        target_language_code: langCode,
         model:   env.SARVAM_TTS_MODEL,
         speaker: env.SARVAM_TTS_SPEAKER,
       }),
@@ -116,18 +124,69 @@ async function streamSarvamSpeech(res: Response, text: string): Promise<boolean>
   return true;
 }
 
-// Picks the right engine for the requested language. English always uses
-// ElevenLabs (unchanged behaviour for every existing caller that doesn't
-// pass `lang`). Hindi/Hinglish try Sarvam first, falling back to the
-// English ElevenLabs voice if Sarvam isn't configured or fails — better
-// to speak with the wrong accent than not speak at all.
-async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): Promise<void> {
+// Picks the right engine for the requested language, consulting the Sarvam
+// circuit breaker before attempting a Sarvam call.
+//
+// Returns true if audio was successfully streamed to `res`, false if an
+// error response was written instead (e.g. both engines failed). The caller
+// uses this to decide whether to debit the voice ledger — a failed upstream
+// call must never burn the user's quota.
+//
+// SARVAM_PRIMARY defaults to true as of 2026-06 (Sarvam is now the
+// primary voice engine for all languages, English included):
+//   All languages try Sarvam first. English uses lang_code=en-IN (Indian-English
+//   accent on Bulbul v3). ElevenLabs is the fallback if Sarvam fails or is
+//   down. The circuit breaker short-circuits the Sarvam attempt during an
+//   outage so users don't pay Sarvam's failure latency on every call.
+//
+// When SARVAM_PRIMARY=false (legacy, opt-out):
+//   English always uses ElevenLabs. Hindi/Hinglish try Sarvam first, falling
+//   back to ElevenLabs. No circuit breaker on this path (non-primary).
+async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): Promise<boolean> {
+  if (env.SARVAM_PRIMARY) {
+    // Consult the breaker before making the Sarvam call
+    const decision = await checkBreaker();
+
+    if (decision.state === 'open') {
+      // Breaker is open — Sarvam is known-down; skip straight to ElevenLabs
+      log.info('Sarvam-primary: breaker open — skipping Sarvam, using ElevenLabs', { lang });
+      await streamElevenLabsSpeech(res, text.slice(0, 2000));
+      // streamElevenLabsSpeech calls fail() on upstream error, which does NOT throw.
+      // We check headersSent: if the response is still open after the call, ElevenLabs
+      // failed and already wrote an error. If it's closed (audio streamed), success.
+      return res.headersSent && !res.writableEnded ? false : res.writableEnded;
+    }
+
+    const langCode = lang === 'en' ? env.SARVAM_EN_LANG_CODE : 'hi-IN';
+    const handled  = await streamSarvamSpeech(res, text, langCode);
+
+    if (handled) {
+      // Success — reset the failure counter (works for both closed and half_open_probe)
+      await recordSuccess();
+      return true;
+    }
+
+    // Sarvam failed — record the failure (may trip the breaker)
+    await recordFailure();
+
+    log.info('Sarvam-primary: falling back to ElevenLabs', {
+      lang,
+      wasProbe: decision.state === 'half_open_probe',
+    });
+    // Re-clip: text was sized for Sarvam's 2500-char limit; ElevenLabs
+    // only accepts 2000. A 2500-char input causes a 400/422 upstream.
+    await streamElevenLabsSpeech(res, text.slice(0, 2000));
+    return res.writableEnded;
+  }
+
+  // Legacy path: ElevenLabs primary for English, Sarvam primary for hi/hinglish
   if (lang !== 'en') {
-    const handled = await streamSarvamSpeech(res, text);
-    if (handled) return;
+    const handled = await streamSarvamSpeech(res, text, 'hi-IN');
+    if (handled) return true;
     log.info('Falling back to ElevenLabs for non-English TTS request', { lang });
   }
   await streamElevenLabsSpeech(res, text);
+  return res.writableEnded;
 }
 
 // POST /api/voice/tts
@@ -138,25 +197,43 @@ async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): P
 // 501 so the frontend can fall back to the browser's built-in speechSynthesis.
 export const textToSpeech = asyncHandler(async (req: Request, res: Response) => {
   const { text, lang = 'en' } = req.body as { text?: string; lang?: VoiceLang };
+  const userId = req.user!.id;
 
   if (!text || !text.trim()) {
     badRequest(res, 'text is required', 'text_required');
     return;
   }
-  if (!env.ELEVENLABS_API_KEY && !(lang !== 'en' && env.SARVAM_API_KEY)) {
+  if (!env.ELEVENLABS_API_KEY && !(lang !== 'en' && env.SARVAM_API_KEY) && !(env.SARVAM_PRIMARY && env.SARVAM_API_KEY)) {
     fail(res, 501, 'voice_not_configured', 'Voice synthesis is not configured on this server.');
     return;
   }
 
-  // Caps mirror each provider's own input limits — ElevenLabs comment
-  // unchanged; Sarvam's REST API caps Bulbul v3 at 2500 characters.
-  const clipped = text.slice(0, lang === 'en' ? 2000 : 2500);
-  await synthesizeSpeech(res, clipped, lang);
+  // Clip to the primary engine's limit. When SARVAM_PRIMARY is true, all
+  // languages (English included) go to Sarvam first (2500-char limit).
+  // When SARVAM_PRIMARY is false, English goes directly to ElevenLabs (2000-char
+  // limit). The Sarvam→ElevenLabs fallback inside synthesizeSpeech re-clips
+  // to 2000 at the actual call site, so we don't under-serve Sarvam by
+  // pre-clipping English to ElevenLabs' lower limit here.
+  const clipped = text.slice(0, env.SARVAM_PRIMARY
+    ? 2500                        // Sarvam Bulbul v3 limit (all langs)
+    : lang === 'en' ? 2000 : 2500 // legacy: ElevenLabs for en, Sarvam for hi
+  );
+  const streamed = await synthesizeSpeech(res, clipped, lang);
+
+  // Only debit if audio was actually streamed — a failed upstream call
+  // (both engines down) must never burn the user's monthly quota.
+  if (streamed) {
+    // Estimate: ~0.05 s of speech per character (natural English pace ≈ 140 wpm,
+    // ~5 chars/word → 700 chars/min → 1 char ≈ 86 ms; we use 50 ms as a
+    // conservative estimate that holds for faster-paced Hindi/Hinglish too).
+    const estimatedSecs = Math.max(1, Math.round(clipped.length * 0.05));
+    debitVoiceSeconds(userId, estimatedSecs, 'voice');
+  }
 });
 
 // Voice "warm-up" — Easy build item (vachix_b2c_build_plan(1).md §2).
 // Lets a Free-tier user hear ~30s of Aria/Elara's HD voice once a day,
-// as a taste of the Pro voice feature, without requiring requirePro.
+// as a taste of the paid voice feature, without requiring requireVoiceTier.
 //
 // Safeguards (reusing existing infra only — no new schema/table):
 //   - Hard character cap (~450 chars ≈ 30s of speech at natural pace)

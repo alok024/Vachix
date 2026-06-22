@@ -18,10 +18,12 @@ import {
   dispatchPersistMistakes,
   dispatchRecomputeWeakAreas,
   dispatchGenerateInterviewerNotes,
+  dispatchGenerateReadinessReport,
 } from '../../infra/queue/dispatcher';
 import type { FeedbackItem } from '../ai/ai.memory';
 import { maybeRewardReferrer } from '../growth/referral.service';
 import { incrementAIUsage }   from '../user/user.service';
+import { maybeAwardStreakVoiceBonus } from '../voice/voice.ledger';
 
 const log = logger.child({ module: 'sessions' });
 
@@ -334,6 +336,29 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
   // WHERE status='scoring' in the SQL means duplicate calls are no-ops.
   await db.completeSession(session.id!);
 
+  // 11. Interview Readiness Report — every-5-sessions rollup on top of
+  //     Interviewer's Notes. Fired AFTER completeSession() so the new
+  //     session is already in 'completed' status when getRecentCompletedSessions
+  //     runs inside the job — firing before completeSession was a race: the
+  //     session could still be 'scoring' when the job queries, causing it to
+  //     read only 4 completed sessions and skip the report entirely.
+  //     Gated Starter+: skip the plan lookup + AI call entirely for Free users.
+  //     Non-fatal, same fire-and-forget treatment as the other post-save jobs.
+  if (newSessions > 0 && newSessions % 5 === 0) {
+    db.getUserById(userId)
+      .then(dbUser => {
+        const plan = dbUser?.plan ?? 'free';
+        if (plan === 'starter' || plan === 'pro' || plan === 'elite') {
+          return dispatchGenerateReadinessReport(userId, newSessions);
+        }
+      })
+      .catch(err =>
+        log.warn('Readiness report dispatch failed (non-fatal)', {
+          userId, sessionCount: newSessions, error: (err as Error)?.message,
+        })
+      );
+  }
+
   // Monetization trigger — computed once, passed to controller
   // Priority: streak_milestone > high_score > post_session (free fallback).
   // Only one trigger fires per session; the frontend shows one contextual
@@ -345,6 +370,14 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
       : (score || 0) >= 7.5
         ? { reason: 'high_score', score: score || 0 }
         : undefined;   // controller sets 'post_session' for free users if no other trigger
+
+  // Award bonus voice minutes on streak milestones (7 / 14 / 21 / …).
+  // Fired non-fatally — a failed top-up must never block the session result.
+  // Uses its own milestone set (every 7 days, not just the upsell_trigger set)
+  // so loyal Pro/Elite users accumulate voice bonus beyond the first 14 days.
+  maybeAwardStreakVoiceBonus(userId, newStreak).catch(err =>
+    log.warn('maybeAwardStreakVoiceBonus failed (non-fatal)', { userId, streak: newStreak, error: err })
+  );
 
   return {
     session_id:      session.id,

@@ -9,7 +9,7 @@ import { setAccessCookie } from '../auth/cookies';
 // POST /api/payment/create-order
 
 export async function createOrder(req: Request, res: Response): Promise<void> {
-  const { plan } = req.body as { plan: 'pro' | 'elite' };
+  const { plan } = req.body as { plan: 'starter' | 'pro' | 'elite' };
   const user = req.user!;
   const testMode = req.query.mode === 'test';
 
@@ -32,7 +32,7 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
     razorpay_order_id:   string;
     razorpay_payment_id: string;
     razorpay_signature:  string;
-    plan:                'pro' | 'elite';
+    plan:                'starter' | 'pro' | 'elite';
   };
 
   const valid = PaymentService.verifySignature(

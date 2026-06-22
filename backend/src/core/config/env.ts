@@ -59,6 +59,21 @@ const EnvSchema = z.object({
   SARVAM_API_KEY:      z.string().default(''),
   SARVAM_TTS_SPEAKER:  z.string().default('shubh'),  // valid bulbul:v3 speaker name
   SARVAM_TTS_MODEL:    z.string().default('bulbul:v3'),
+  // When set to 'true', Sarvam is used as the primary TTS provider for ALL
+  // languages (English included), with ElevenLabs as fallback. When 'false'
+  // (default for backwards-compat), ElevenLabs remains primary for English
+  // and Sarvam only handles hi/hinglish requests.
+  // Feature: "Voice provider switch (Sarvam primary)" — vachix_b2c_build_plan §2.
+  // 2026-06: Sarvam is now the default primary voice engine for all
+  // languages (English included), per the pricing/voice-stack decision —
+  // lower cost + native Hinglish support. ElevenLabs remains the
+  // automatic fallback on Sarvam failure (see synthesizeSpeech() in
+  // voice.controller.ts). Set to 'false' to revert to ElevenLabs-primary
+  // for English without a code change.
+  SARVAM_PRIMARY:      z.string().transform(v => v === 'true').default('true'),
+  // Sarvam language code for English requests when SARVAM_PRIMARY=true.
+  // Bulbul v3 supports en-IN natively for Indian-English accent.
+  SARVAM_EN_LANG_CODE: z.string().default('en-IN'),
 
   // Razorpay — live keys (required)
   RAZORPAY_KEY_ID:         z.string().min(1),
@@ -128,6 +143,26 @@ const EnvSchema = z.object({
   // (see migrations/007_referral_bonus_cap.sql) via LEAST(), not in app
   // code, so concurrent reward grants can't race past the cap.
   MAX_REFERRAL_BONUS_CALLS: z.coerce.number().int().positive().default(50),
+
+  // Voice usage ledger (migration 011)
+  // Per-plan monthly voice caps (seconds). -1 = unlimited.
+  // free:    no voice (gated by requireVoiceTier in voice.routes.ts)
+  // starter: 600 s = 10 min  (enough for ~20 short TTS calls)
+  // pro:     3600 s = 60 min
+  // elite:   -1   = unlimited
+  VOICE_CAP_STARTER:       z.coerce.number().int().default(600),
+  VOICE_CAP_PRO:           z.coerce.number().int().default(3600),
+  // Hard ceiling on streak-milestone bonus voice seconds a user can
+  // accumulate. Enforced via LEAST() inside the RPC (same as referral cap).
+  MAX_BONUS_VOICE_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Bonus seconds awarded per streak milestone (7 / 14 / 21 / etc.)
+  STREAK_VOICE_BONUS_SECS: z.coerce.number().int().nonnegative().default(300),
+  // Sarvam circuit breaker — prevents hammering a downed Sarvam with full
+  // traffic. After FAILURE_THRESHOLD consecutive failures the breaker opens
+  // (routes straight to ElevenLabs). After COOLDOWN_MS it half-opens and
+  // probes Sarvam with one request; success closes the breaker immediately.
+  SARVAM_BREAKER_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(3),
+  SARVAM_BREAKER_COOLDOWN_MS:       z.coerce.number().int().positive().default(15_000),
 }).superRefine((data, ctx) => {
   // M3: SUPABASE_ANON_KEY must be set in production — the silent fallback
   // to SUPABASE_SERVICE_KEY bypasses Row Level Security. Dev/test environments
@@ -191,14 +226,12 @@ export type Env = typeof env;
 
 export const IS_PROD = env.NODE_ENV === 'production';
 
-// 2026-06: 'starter' added as a config-layer-only tier (₹299/mo, 30
-// sessions). Not yet exposed in any frontend plan selector — see
-// vachix_b2c_build_plan(1).md §2 "Starter tier (full integration)",
-// which remains unbuilt. Until that UI/billing-flow work lands, the
-// only way to end up on this plan is a direct API call, but every
-// PLAN_LIMITS/PLAN_PRICES consumer below already resolves dynamically
-// by key, so adding it here doesn't change behaviour for any existing
-// free/pro/elite user.
+// 2026-06: 'starter' (₹299/mo, 30 sessions) is a fully integrated tier —
+// exposed in the landing page pricing section, the in-app upgrade modal,
+// and the billing flow (vachix_b2c_build_plan(1).md §2 "Starter tier
+// (full integration)"). Every PLAN_LIMITS/PLAN_PRICES consumer below
+// resolves dynamically by key, so this has applied to real Starter
+// subscribers since launch — no per-feature opt-in needed here.
 export type PlanType = 'free' | 'starter' | 'pro' | 'elite';
 
 /** -1 = unlimited */

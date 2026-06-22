@@ -483,6 +483,18 @@ export default function LandingPage() {
             <div className="ssi-pgrid">
               <div className="ssi-plan ssi-rvl d1">
                 <div className="ssi-plan-top-line" />
+                <span className="ssi-plan-name">Starter</span>
+                <p className="ssi-plan-tag">Get serious without the full commitment</p>
+                <div className="ssi-plan-price"><span className="ssi-plan-amt">₹299</span><span className="ssi-plan-per">/month</span></div>
+                <p className="ssi-plan-gst">+ 18% GST · billed monthly</p>
+                <ul className="ssi-plan-feats">
+                  {['30 AI interview sessions/month', 'All 11 exam tracks', 'Elara English correction', 'Grammar & Fluency scoring', 'AI memory on your mistakes'].map(f => <li key={f}>{f}</li>)}
+                </ul>
+                <Link href="/register" className="ssi-plan-cta std">Start free, then upgrade</Link>
+              </div>
+              <div className="ssi-plan featured ssi-rvr d2">
+                <div className="ssi-plan-top-line" />
+                <span className="ssi-plan-badge">Best value</span>
                 <span className="ssi-plan-name">Pro</span>
                 <p className="ssi-plan-tag">Everything you need to crack your interview</p>
                 <div className="ssi-plan-price"><span className="ssi-plan-amt">₹699</span><span className="ssi-plan-per">/month</span></div>
@@ -490,9 +502,9 @@ export default function LandingPage() {
                 <ul className="ssi-plan-feats">
                   {['Unlimited interview sessions', 'All 11 exam tracks (UPSC, Bank PO, SSC…)', 'Elara English correction on every answer', 'Grammar, Fluency & Vocabulary scoring', 'AI memory — tracks your recurring mistakes', 'Weak-area detection & adaptive difficulty', 'AI Chat coach between sessions', 'Session history & Readiness dashboard'].map(f => <li key={f}>{f}</li>)}
                 </ul>
-                <Link href="/register" className="ssi-plan-cta std">Start free, then upgrade</Link>
+                <Link href="/register" className="ssi-plan-cta prime">Start free, then upgrade</Link>
               </div>
-              <div className="ssi-plan featured ssi-rvr d2">
+              <div className="ssi-plan ssi-rv d3">
                 <div className="ssi-plan-top-line" />
                 <span className="ssi-plan-badge">Most popular</span>
                 <span className="ssi-plan-name">Elite</span>
@@ -502,7 +514,7 @@ export default function LandingPage() {
                 <ul className="ssi-plan-feats">
                   {['Everything in Pro', 'Priority AI — faster responses', 'Detailed grammar breakdowns with examples', 'Full session history & PDF exports', 'Personalised improvement plan', 'Early access to new features (voice & avatar)'].map(f => <li key={f}>{f}</li>)}
                 </ul>
-                <Link href="/register?plan=elite" className="ssi-plan-cta prime">Go Elite</Link>
+                <Link href="/register?plan=elite" className="ssi-plan-cta std">Go Elite</Link>
               </div>
             </div>
             <p className="ssi-free-note">Or <Link href="/register">start completely free</Link> — 7 AI sessions to try, all tracks, no card needed</p>

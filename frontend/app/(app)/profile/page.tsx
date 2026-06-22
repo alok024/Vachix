@@ -102,13 +102,20 @@ function ProfilePageInner() {
   const isOnboarding = searchParams.get('onboarding') === '1' && !meData?.onboarding?.completed;
   const stats        = meData?.stats;
   const usage        = meData?.usage;
-  const isFree       = !user || (user.plan !== 'pro' && user.plan !== 'elite');
+  const isFree       = !user || (user.plan === 'free');
+  const isStarter    = user?.plan === 'starter';
+  const isProOrElite = user?.plan === 'pro' || user?.plan === 'elite';
+  // Starter shares Free's finite, trackable session cap (30/month) —
+  // unlike Pro/Elite, which are unlimited — so both should see the usage
+  // bar and an upsell CTA. Only Pro/Elite are truly "unlimited, nothing
+  // more to show usage for".
+  const hasUsageCap  = isFree || isStarter;
   const FREE_LIMIT   = usage?.limit ?? user?.ai_calls_limit ?? null;
   const aiUsed       = usage?.ai_calls ?? 0;
   const aiRemaining  = usage?.remaining ?? user?.ai_calls_remaining ?? null;
 
-  const planLabel        = user?.plan === 'elite' ? '◈ Elite' : user?.plan === 'pro' ? '✦ Pro' : 'Free';
-  const planBadgeVariant = (user?.plan === 'elite' ? 'elite' : user?.plan === 'pro' ? 'pro' : 'free') as any;
+  const planLabel        = user?.plan === 'elite' ? '◈ Elite' : user?.plan === 'pro' ? '✦ Pro' : user?.plan === 'starter' ? '⚡ Starter' : 'Free';
+  const planBadgeVariant = (user?.plan === 'elite' ? 'elite' : user?.plan === 'pro' ? 'pro' : user?.plan === 'starter' ? 'starter' : 'free') as any;
 
   async function handleLogout() {
     await logout.mutateAsync();
@@ -168,8 +175,8 @@ function ProfilePageInner() {
         </Card>
       )}
 
-      {/* Usage */}
-      {isFree && (
+      {/* Usage — anyone with a finite session cap (Free, Starter) */}
+      {hasUsageCap && (
         <Card className="p-5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>AI Sessions</span>
@@ -184,18 +191,20 @@ function ProfilePageInner() {
           />
           <p className="text-xs" style={{ color: 'var(--text-3)' }}>
             {aiRemaining != null
-              ? aiRemaining > 0 ? `${aiRemaining} session${aiRemaining !== 1 ? 's' : ''} remaining.` : 'All free sessions used.'
+              ? aiRemaining > 0 ? `${aiRemaining} session${aiRemaining !== 1 ? 's' : ''} remaining.` : 'All sessions used for this period.'
               : 'Check usage in your dashboard.'}
           </p>
         </Card>
       )}
 
-      {/* Upgrade CTA */}
-      {isFree && (
+      {/* Upgrade CTA — anyone with a finite session cap (Free, Starter) */}
+      {hasUsageCap && (
         <Card className="p-5" style={{ borderColor: 'var(--blue-border)' }}>
           <div className="text-sm font-bold mb-1" style={{ color: 'var(--text-1)' }}>🚀 Unlock unlimited practice</div>
           <p className="text-xs mb-4" style={{ color: 'var(--text-3)' }}>
-            Pro gives you unlimited AI sessions, full session history, advanced analytics, and HD voice.
+            {isStarter
+              ? 'Pro gives you unlimited AI sessions, full session history, and advanced analytics.'
+              : 'Pro gives you unlimited AI sessions, full session history, advanced analytics, and HD voice.'}
           </p>
           <div className="space-y-2">
             <Button variant="upgrade" className="w-full" onClick={() => showUpgradeModal('strip')}>
@@ -210,8 +219,22 @@ function ProfilePageInner() {
         </Card>
       )}
 
+      {/* Starter plan — active features, accurate to what Starter actually includes */}
+      {isStarter && (
+        <Card className="p-5">
+          <div className="text-sm font-semibold mb-3" style={{ color: 'var(--text-1)' }}>⚡ Starter Plan Active</div>
+          <ul className="space-y-2 text-sm" style={{ color: 'var(--text-2)' }}>
+            {['30 AI interview sessions/month', 'All 11 exam tracks', 'Elara English correction', 'Grammar & Fluency scoring', 'AI memory on your mistakes', 'HD voice — 10 min/month'].map((f) => (
+              <li key={f} className="flex items-center gap-2">
+                <span style={{ color: 'var(--success)' }}>✓</span> {f}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {/* Pro/Elite features */}
-      {!isFree && (
+      {isProOrElite && (
         <Card className="p-5">
           <div className="text-sm font-semibold mb-3" style={{ color: 'var(--text-1)' }}>
             {user?.plan === 'elite' ? '◈ Elite Plan Active' : '✦ Pro Plan Active'}

@@ -56,7 +56,7 @@ Button.displayName = 'Button';
 
 // Badge
 
-type BadgeVariant = 'default' | 'accent' | 'success' | 'warn' | 'danger' | 'purple' | 'pro' | 'elite' | 'free';
+type BadgeVariant = 'default' | 'accent' | 'success' | 'warn' | 'danger' | 'purple' | 'pro' | 'elite' | 'free' | 'starter';
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -74,6 +74,7 @@ export function Badge({ variant = 'default', children, className }: BadgeProps) 
     variant === 'pro'     ? { background: 'var(--warn-dim)',     color: 'var(--warn)',     border: '1px solid var(--warn-border)' } :
     variant === 'elite'   ? { background: 'linear-gradient(135deg,var(--blue-dim),var(--warn-dim))', color: 'var(--text-1)', border: '1px solid var(--blue-border)' } :
     variant === 'free'    ? { background: 'var(--surface-3)',    color: 'var(--text-3)',   border: '1px solid var(--border)' } :
+    variant === 'starter' ? { background: 'var(--success-dim)',  color: 'var(--success)',  border: '1px solid var(--success-border)' } :
                             { background: 'var(--surface-2)',    color: 'var(--text-2)',   border: '1px solid var(--border2)' };
 
   return (

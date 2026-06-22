@@ -26,7 +26,7 @@ function getRazorpay(testMode = false): Razorpay {
 export async function createOrder(
   userId: string,
   email:  string,
-  plan:   'pro' | 'elite',
+  plan:   'starter' | 'pro' | 'elite',
   testMode = false
 ) {
   const amount = PLAN_PRICES[plan];
@@ -138,7 +138,7 @@ export async function fetchRazorpayOrder(
 
 export async function activateSubscription(
   userId:    string,
-  plan:      'pro' | 'elite',
+  plan:      'starter' | 'pro' | 'elite',
   orderId:   string,
   paymentId: string
 ): Promise<string> {
@@ -255,9 +255,9 @@ async function onPaymentCaptured(event: RazorpayWebhookEvent): Promise<void> {
   if (!payment) return;
 
   const userId = payment.notes?.user_id;
-  const plan   = payment.notes?.plan as 'pro' | 'elite' | undefined;
+  const plan   = payment.notes?.plan as 'starter' | 'pro' | 'elite' | undefined;
 
-  if (!userId || !plan || !['pro', 'elite'].includes(plan)) {
+  if (!userId || !plan || !['starter', 'pro', 'elite'].includes(plan)) {
     paymentLogger.error('Webhook: missing or invalid user_id/plan in payment notes', { payment });
     return;
   }

@@ -5,6 +5,7 @@
  *   - persist-mistakes              (AI memory after each session)
  *   - recompute-weak-areas          (topic scoring after each session)
  *   - generate-interviewer-notes    (Aria's narrative summary after each session)
+ *   - generate-readiness-report     (every-5-sessions rollup summary, Starter+ only)
  *   - expire-subscriptions          (recurring hourly — replaces setInterval)
  *   - expire-stale-sessions         (recurring every 15 min — session lifecycle sweep)
  *

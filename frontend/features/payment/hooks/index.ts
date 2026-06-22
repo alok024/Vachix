@@ -12,7 +12,7 @@ import { QK } from '@/lib/query-keys';
 // Create order
 export function useCreateOrder() {
   return useMutation({
-    mutationFn: (plan: 'pro' | 'elite') => paymentApi.createOrder(plan),
+    mutationFn: (plan: 'starter' | 'pro' | 'elite') => paymentApi.createOrder(plan),
   });
 }
 

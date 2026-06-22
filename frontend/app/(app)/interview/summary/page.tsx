@@ -4,12 +4,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, Suspense } from 'react';
 import { useSession } from '@/features/interview/hooks';
 import { interviewApi } from '@/features/interview/api';
+import { certificatesApi } from '@/features/certificates/api';
+import { comparisonApi }   from '@/features/comparison/api';
 import { useInterviewStore } from '@/store/interview';
 import { useUIStore } from '@/store/ui';
 import { useAuthStore } from '@/store/auth';
 import { Button, Card, CardHeader, CardBody, ScoreBadge, Spinner, ScoreRing } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
-import { CheckCircle, Share2, Download, MessageSquareQuote } from 'lucide-react';
+import { CheckCircle, Share2, Download, MessageSquareQuote, Award, Users } from 'lucide-react';
 
 function InterviewSummaryPageInner() {
   const params    = useSearchParams();
@@ -26,6 +28,9 @@ function InterviewSummaryPageInner() {
 
   const [shareUrl, setShareUrl]     = useState<string | null>(null);
   const [copyLoading, setCopyLoading] = useState(false);
+  const [certLoading, setCertLoading] = useState(false);
+  // Track which question index is currently generating a compare link
+  const [compareLoading, setCompareLoading] = useState<number | null>(null);
 
   const avgScore    = sessionData?.score ?? (feedbacks.length ? Math.round(feedbacks.reduce((a, f) => a + f.score, 0) / feedbacks.length * 10) / 10 : 0);
   const totalErrors = feedbacks.reduce((a, f) => a + (f.corrections?.length ?? 0), 0);
@@ -74,6 +79,31 @@ function InterviewSummaryPageInner() {
     const a    = document.createElement('a');
     a.href = url; a.download = `vachix-report-${Date.now()}.txt`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);
+  }
+
+  async function handleGetCertificate() {
+    if (!sessionId || certLoading) return;
+    setCertLoading(true);
+    const res = await certificatesApi.getSessionCertificateToken(sessionId);
+    setCertLoading(false);
+    if (res.ok) {
+      window.open(res.data.certificate_url, '_blank');
+    } else {
+      showToast('Could not generate certificate. Try again.');
+    }
+  }
+
+  async function handleChallengeFriend(questionIndex: number) {
+    if (!sessionId || compareLoading !== null) return;
+    setCompareLoading(questionIndex);
+    const res = await comparisonApi.createComparison(sessionId, questionIndex);
+    setCompareLoading(null);
+    if (res.ok) {
+      await navigator.clipboard.writeText(res.data.share_url).catch(() => {});
+      showToast('🔗 Challenge link copied! Send it to a friend.');
+    } else {
+      showToast('Could not create challenge link. Try again.');
+    }
   }
 
   if (isLoading && sessionId) {
@@ -179,6 +209,11 @@ function InterviewSummaryPageInner() {
             <Button variant="secondary" size="sm" onClick={downloadReport}>
               <Download className="w-3.5 h-3.5" /> Export TXT
             </Button>
+            {sessionId && (
+              <Button variant="secondary" size="sm" onClick={handleGetCertificate} loading={certLoading}>
+                <Award className="w-3.5 h-3.5" /> Certificate
+              </Button>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -214,6 +249,21 @@ function InterviewSummaryPageInner() {
                       {c.rule && <div className="mt-0.5" style={{ color: 'var(--text-3)' }}>{c.rule}</div>}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Challenge a friend on this specific question */}
+              {sessionId && (
+                <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => handleChallengeFriend(i)}
+                    disabled={compareLoading !== null}
+                    className="flex items-center gap-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    <Users className="h-3 w-3" />
+                    {compareLoading === i ? 'Copying link…' : 'Challenge a friend on this question'}
+                  </button>
                 </div>
               )}
             </Card>

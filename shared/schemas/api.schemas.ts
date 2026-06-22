@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 // Shared enums / literals
 
-export const PlanSchema       = z.enum(['free', 'pro', 'elite']);
+export const PlanSchema       = z.enum(['free', 'starter', 'pro', 'elite']);
 export const SessionModeSchema = z.enum(['classic', 'chat']);
 // Fix (#9): this schema previously drifted from what the rest of the
 // codebase actually uses. Verified against frontend/types/index.ts,

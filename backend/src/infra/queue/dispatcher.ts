@@ -99,6 +99,36 @@ export async function dispatchGenerateInterviewerNotes(
   }
 }
 
+// Enqueue: generate Interview Readiness Report (every-5-sessions rollup)
+//
+// Gated Starter+ at the call site — sessions.service.ts only calls this
+// for users on a paying plan, so this dispatcher itself has no plan
+// check (it trusts the caller, same as the other dispatch* functions).
+
+export async function dispatchGenerateReadinessReport(
+  userId:       string,
+  sessionCount: number,
+): Promise<void> {
+  const q = getBackgroundQueue();
+
+  if (!q) {
+    const { generateReadinessReport } =
+      await import('../../modules/analytics/readiness-report.service');
+    generateReadinessReport(userId, sessionCount).catch(() => {/* logged inside */});
+    return;
+  }
+
+  try {
+    await q.add('generate-readiness-report', { userId, sessionCount });
+    log.debug('Queued generate-readiness-report', { userId, sessionCount });
+  } catch (err) {
+    log.error('Failed to queue generate-readiness-report — running inline', { userId, sessionCount, error: err });
+    const { generateReadinessReport } =
+      await import('../../modules/analytics/readiness-report.service');
+    generateReadinessReport(userId, sessionCount).catch(() => {});
+  }
+}
+
 // Schedule: B2B lead 24h follow-up email
 //
 // With Redis:    enqueues a delayed job (24h) on vachix:background.
