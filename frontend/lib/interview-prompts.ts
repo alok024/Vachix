@@ -63,6 +63,11 @@ export function getElaraSystemPrompt(mode: ElaraMode, topic = 'daily life'): str
   if (mode === 'vocabulary') {
     return base + `\nHelp the user expand their English vocabulary. When they say a word or phrase, give: the meaning, 2–3 better alternatives, example sentences, and common mistakes Indians make with it. Then invite them to use one of the words in a sentence so you can check.\nAfter their example sentence:\n###ANALYSIS###\n{"errors":[{"wrong":"...", "correct":"...", "rule":"..."}], "grammar_score":<1-10>, "fluency_score":<1-10>, "vocab_score":<1-10>, "vocab_upgrade": null, "tip":"..."}\nAlways respond naturally and encouragingly.`;
   }
+  if (mode === 'correction') {
+    // Explicitly reinforce the persona name so the model never drifts to a
+    // different name (e.g. "Aria") when the correction prompt is sparse.
+    return base + `\nYour name is Elara — always introduce yourself as Elara if you need to introduce yourself. Wait for the user to type a sentence, then gently correct any grammar, vocabulary, or fluency issues, show the corrected version, and explain each fix clearly. After your reply, output:\n###ANALYSIS###\n{"errors":[{"wrong":"...", "correct":"...", "rule":"..."}], "grammar_score":<1-10>, "fluency_score":<1-10>, "vocab_score":<1-10>, "vocab_upgrade": {"basic":"...", "better":"..."}, "tip":"..."}\nIf there is nothing meaningful to upgrade, set vocab_upgrade to null. Return ONLY the JSON after ###ANALYSIS###, nothing else after it.`;
+  }
   return base;
 }
 
@@ -78,15 +83,35 @@ export function parseElaraResponse(raw: string): {
   } | null;
 } {
   const markerIdx = raw.indexOf('###ANALYSIS###');
-  if (markerIdx === -1) return { reply: raw.trim(), analysis: null };
-  const reply = raw.slice(0, markerIdx).trim();
+
+  // Strip any stray ###...### instruction markers the model leaked into the
+  // visible reply text (e.g. "### Wait for the user's example sentence ###").
+  // These are internal prompt directives that should never reach the UI.
+  const stripLeakedMarkers = (text: string) =>
+    text.replace(/###[^#]*###/g, '').trim();
+
+  if (markerIdx === -1) return { reply: stripLeakedMarkers(raw), analysis: null };
+
+  const reply = stripLeakedMarkers(raw.slice(0, markerIdx));
   const jsonPart = raw.slice(markerIdx + 14).trim();
   let analysis = null;
   try {
     const start = jsonPart.indexOf('{');
     const end = jsonPart.lastIndexOf('}');
     if (start !== -1 && end > start) {
-      analysis = JSON.parse(jsonPart.slice(start, end + 1));
+      const parsed = JSON.parse(jsonPart.slice(start, end + 1));
+      // Suppress vocab_upgrade when both sides are "none" or empty — the model
+      // emits { basic: "none", better: "none" } as a placeholder when there is
+      // nothing to upgrade, which renders as a confusing "Basic: none → none"
+      // chip in the UI.
+      if (
+        parsed.vocab_upgrade &&
+        (!parsed.vocab_upgrade.basic  || parsed.vocab_upgrade.basic  === 'none') &&
+        (!parsed.vocab_upgrade.better || parsed.vocab_upgrade.better === 'none')
+      ) {
+        parsed.vocab_upgrade = null;
+      }
+      analysis = parsed;
     }
   } catch {
     /* non-fatal */
