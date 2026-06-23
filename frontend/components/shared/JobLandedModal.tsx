@@ -64,8 +64,8 @@ export function JobLandedModal({ onClose, userName }: Props) {
         show_on_board: showOnBoard,
         has_company:   Boolean(company.trim()),
       });
-    } catch (e) {
-      setError(extractErrorMessage(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : typeof e === "string" ? e : "Something went wrong.");
     } finally {
       setLoading(false);
     }
