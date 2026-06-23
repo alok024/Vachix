@@ -52,7 +52,7 @@ export function JobLandedModal({ onClose, userName }: Props) {
       });
 
       if (!res.ok) {
-        setError(extractErrorMessage(res));
+        setError(extractErrorMessage(res.error));
         return;
       }
 
