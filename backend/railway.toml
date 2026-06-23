@@ -1,0 +1,6 @@
+[build]
+buildCommand = "cd .. && npm install && npm run build --workspace=shared && npm run build --workspace=backend"
+
+[deploy]
+startCommand = "node dist/app.js"
+healthcheckPath = "/health"
