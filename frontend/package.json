@@ -5,11 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "npx next build",
-    "build:cf": "npx @cloudflare/next-on-pages",
+    "build:cf": "npx next build && npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:build": "npx next build && npx @cloudflare/next-on-pages",
     "preview": "npm run pages:build && wrangler pages dev",
     "deploy": "npm run pages:build && wrangler pages deploy"
   },
