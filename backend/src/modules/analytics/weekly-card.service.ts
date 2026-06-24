@@ -61,19 +61,24 @@ interface WeeklyStats {
 }
 
 async function getWeeklyStats(userId: string): Promise<WeeklyStats> {
-  const now        = new Date();
   // IST = UTC+5:30
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-  const nowIST     = new Date(now.getTime() + IST_OFFSET);
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const MS_PER_DAY    = 24 * 60 * 60 * 1000;
 
-  // Align to the start of "this week" in IST (7 days ago at midnight IST)
-  const thisWeekStart = new Date(nowIST.getTime() - 7 * 24 * 60 * 60 * 1000);
-  thisWeekStart.setHours(0, 0, 0, 0);
-  const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // Shift now into IST by adding the offset. The resulting ms value can be
+  // treated as "UTC midnight of the IST date" once we floor it to a day
+  // boundary — no Date object needed, no setHours(), no server-timezone
+  // dependency. setHours(0,0,0,0) used to do this, but it uses the server's
+  // local timezone, which would silently produce wrong results on any server
+  // not in UTC.
+  const nowIST_ms            = Date.now() + IST_OFFSET_MS;
+  const todayMidnightIST_ms  = nowIST_ms - (nowIST_ms % MS_PER_DAY);
+  const thisWeekStartIST_ms  = todayMidnightIST_ms - 7 * MS_PER_DAY;
+  const lastWeekStartIST_ms  = thisWeekStartIST_ms  - 7 * MS_PER_DAY;
 
-  // Convert back to UTC for DB comparison
-  const thisWeekStartUTC = new Date(thisWeekStart.getTime() - IST_OFFSET).toISOString();
-  const lastWeekStartUTC = new Date(lastWeekStart.getTime() - IST_OFFSET).toISOString();
+  // Shift back to UTC for DB comparisons (sessions.created_at is stored in UTC).
+  const thisWeekStartUTC = new Date(thisWeekStartIST_ms - IST_OFFSET_MS).toISOString();
+  const lastWeekStartUTC = new Date(lastWeekStartIST_ms - IST_OFFSET_MS).toISOString();
 
   const [allSessions, weakAreas, stats] = await Promise.all([
     db.getRecentCompletedSessions(userId, 30),  // enough for 2 weeks

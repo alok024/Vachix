@@ -44,11 +44,22 @@ export const UserSchema = z.object({
   onboarding_completed_at:  z.string().nullable().optional(),
   is_admin:                 z.boolean().optional(),
   created_at:               z.string().optional(),
+  // Job-landed fields — present on the /me response once the user has
+  // submitted the \"I got the job\" form; null/undefined before that.
+  job_landed_at:            z.string().nullable().optional(),
+  job_landed_role:          z.string().nullable().optional(),
+  job_landed_company:       z.string().nullable().optional(),
 });
 
 export const UsageSchema = z.object({
-  ai_calls:   z.number(),
-  call_count: z.number().optional(),
+  ai_calls:      z.number(),
+  call_count:    z.number().optional(),
+  limit:         z.number().nullable().optional(),
+  remaining:     z.number().nullable().optional(),
+  resets_at:     z.string().nullable().optional(),
+  // P1-A session cap fields
+  session_count: z.number(),
+  session_limit: z.number().nullable(),
 });
 
 export const UserStatsSchema = z.object({
@@ -156,6 +167,23 @@ export const MeResponseSchema = z.object({
   }),
   job_readiness: JobReadinessSchema.optional(),
   weak_areas:    z.array(WeakAreaSchema).optional(),
+  session_defaults: z.object({
+    profession:     z.string(),
+    difficulty:     z.enum(['beginner', 'intermediate', 'expert']),
+    interview_type: z.string(),
+  }).optional(),
+  recommendations: z.array(z.object({
+    type:   z.enum(['session', 'focus', 'milestone']),
+    title:  z.string(),
+    reason: z.string(),
+    action: z.string().optional(),
+  })).optional(),
+  referral: z.object({
+    code:        z.string(),
+    uses:        z.number(),
+    rewarded:    z.number(),
+    bonus_calls: z.number(),
+  }).nullable().optional(),
 });
 
 export const SessionsResponseSchema = z.object({
@@ -177,7 +205,11 @@ export const CreateSessionResponseSchema = z.object({
   sessions:        z.number(),
   best_score:      z.number(),
   job_ready_score: z.number(),
-  upsell_trigger:  z.string().optional(),
+  upsell_trigger:  z.object({
+    reason:  z.enum(['post_session', 'high_score', 'streak_milestone']),
+    score:   z.number().optional(),
+    streak:  z.number().optional(),
+  }).optional(),
 });
 
 export const AIResponseSchema = z.object({

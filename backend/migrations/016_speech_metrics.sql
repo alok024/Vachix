@@ -22,7 +22,7 @@
 
 CREATE TABLE IF NOT EXISTS speech_metrics (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id           UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id           bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   session_id        UUID        NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   client_session_id UUID        NOT NULL,
   filler_count      INTEGER     NOT NULL DEFAULT 0,

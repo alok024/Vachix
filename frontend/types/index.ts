@@ -24,6 +24,11 @@ export interface User {
   onboarding_completed_at?: string | null;
   is_admin?: boolean;
   created_at?: string;
+  // P3-A: set once user submits job-landed form; null until then.
+  // Drives dashboard card visibility without unsafe casts.
+  job_landed_at?:      string | null;
+  job_landed_role?:    string | null;
+  job_landed_company?: string | null;
 }
 
 export interface Usage {
@@ -154,7 +159,7 @@ export interface ApiErr {
   // request_id correlates this error with backend logs/Sentry — see
   // lib/api.ts's extractErrorMessage / withErrorRef, which surface it to
   // the user as a support reference ("Error ref: abc123").
-  error: { code: string; message: string; request_id?: string } | string;
+  error: { code: string; message: string; request_id?: string; details?: Record<string, unknown> } | string;
 }
 
 export type ApiResult<T> = ApiOk<T> | ApiErr;

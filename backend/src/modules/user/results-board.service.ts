@@ -243,3 +243,57 @@ export async function getResultsBoard(page = 1, pageSize = 20): Promise<ResultsB
 
   return { entries, total, page, page_size: pageSize };
 }
+
+// ─── Single user board entry (for OG image generation) ───────────────────────
+
+/**
+ * Fetches a single results_board row by user_id.
+ * Used by the OG image route so it can do a direct indexed lookup instead of
+ * scanning all board entries and hoping the target user is on page 1.
+ * Returns null when the user has no board entry (opted out or not yet submitted).
+ */
+export async function getResultsBoardEntryByUserId(
+  userId: string,
+): Promise<ResultsBoardEntry_Public | null> {
+  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_SERVICE_KEY;
+
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/results_board?user_id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,company,sessions_count,avg_score,og_token,user_id,created_at&limit=1`,
+    {
+      headers: {
+        'apikey':        supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Accept':        'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) return null;
+
+  const rows = (await res.json()) as Array<{
+    id: string;
+    display_name: string;
+    role: string;
+    company: string | null;
+    sessions_count: number;
+    avg_score: number | null;
+    og_token: string;
+    user_id: string;
+    created_at: string;
+  }>;
+
+  if (!rows.length) return null;
+  const r = rows[0];
+
+  return {
+    id:             r.id,
+    display_name:   r.display_name,
+    role:           r.role,
+    company:        r.company,
+    sessions_count: r.sessions_count,
+    avg_score:      r.avg_score,
+    og_image_url:   `${env.FRONTEND_URL}/api/og/job-landed?uid=${r.user_id}&token=${r.og_token}`,
+    created_at:     r.created_at,
+  };
+}

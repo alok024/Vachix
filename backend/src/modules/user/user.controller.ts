@@ -97,11 +97,13 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
         const nextMonth = new Date(nowIST.getFullYear(), nowIST.getMonth() + 1, 1);
         return nextMonth.toISOString();
       })(),
-      // P1-A: monthly session cap (free tier only). Included for all plans so
-      // the frontend type is uniform; paid plans have session_limit: null which
-      // the setup page treats as "no cap".
+      // P1-A: monthly session cap. Free users are capped at SESSION_CAP_FREE.
+      // All paid plans (starter, pro, elite) have no session cap → null.
+      // Previously used `limit === -1` (ai_calls unlimited) as the proxy for
+      // "paid plan", which was wrong for Starter (ai_calls = 30, not -1) —
+      // Starter users received session_limit: 3 instead of null.
       session_count: usage?.monthly_session_count ?? 0,
-      session_limit: limit === -1 ? null : SESSION_CAP_FREE,  // paid plans have no session cap
+      session_limit: dbUser.plan === 'free' ? SESSION_CAP_FREE : null,
     },
     stats: {
       streak:              stats?.streak     || 0,

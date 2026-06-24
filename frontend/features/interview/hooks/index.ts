@@ -48,7 +48,22 @@ export function useSession(id: string | null) {
       return res.data;
     },
     enabled: !!id,
-    staleTime: Infinity, // Sessions don't change after creation
+    // Sessions are immutable after creation — scores, feedback, etc. never
+    // change. staleTime: Infinity prevents needless re-fetches on navigation.
+    // Exception: if interviewer_notes is null and we are past the 30s polling
+    // window (background job likely failed permanently), treat the cached data
+    // as immediately stale so the next page mount triggers one re-fetch.
+    // This avoids serving permanently-null notes from cache indefinitely while
+    // still keeping the Infinity behaviour for fully-populated sessions.
+    staleTime: (query) => {
+      const session = query.state.data?.session;
+      if (!session) return Infinity;
+      if (session.interviewer_notes) return Infinity;
+      const createdAt = session.created_at ? new Date(session.created_at).getTime() : 0;
+      const pastDeadline = Date.now() - createdAt > INTERVIEWER_NOTES_POLL_DEADLINE_MS;
+      // Past deadline + still null → stale immediately so a fresh mount retries.
+      return pastDeadline ? 0 : Infinity;
+    },
     refetchInterval: (query) => {
       const session = query.state.data?.session;
       if (!session) return false;

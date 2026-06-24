@@ -91,19 +91,26 @@ export default function EnglishPage() {
       { role: 'user' as const, content: input.trim() },
     ];
 
-    const res = await aiApi.call({
-      messages: conversationMessages,
-      topic: 'English coaching',
-      session_id: sessionId,
-    });
+    try {
+      const res = await aiApi.call({
+        messages: conversationMessages,
+        topic: 'English coaching',
+        session_id: sessionId,
+      });
 
-    if (res.ok) {
-      const { reply, analysis } = parseElaraResponse(res.data.text);
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply, analysis }]);
-    } else {
-      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠ Could not get response. Try again.' }]);
+      if (res.ok) {
+        const { reply, analysis } = parseElaraResponse(res.data.text);
+        setMessages((prev) => [...prev, { role: 'assistant', content: reply, analysis }]);
+      } else {
+        setMessages((prev) => [...prev, { role: 'assistant', content: '⚠ Could not get response. Try again.' }]);
+      }
+    } catch {
+      // Network-level throw (fetch failed, timeout, etc.) — surface a recoverable
+      // error rather than leaving loading=true and the input permanently disabled.
+      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠ Network error. Check your connection and try again.' }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   function resetChat() {

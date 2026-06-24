@@ -11,10 +11,18 @@ import { Difficulty, InterviewType, SessionMode } from '@/types';
 import { voiceApi } from '@/features/voice/api';
 import { FLAG } from '@/lib/feature-flags'; // P2-A: humanized coaching UI indicator
 
-const PROFESSIONS = [
-  'Software Developer', 'Java Developer', 'Government Job (SSC/UPSC)',
-  'Data Scientist', 'Doctor / Medical', 'Teacher', 'Bank PO',
-  'Marketing Manager', 'Full Stack Developer', 'Police / Defence',
+// ─── F27: Profession picker cards data ────────────────────────────────────────
+const PROFESSION_CARDS = [
+  { prof: 'Bank PO',          icon: '🏦', hint: 'IBPS & SBI format questions' },
+  { prof: 'SSC CGL',          icon: '📋', hint: 'Tier I & II interview rounds' },
+  { prof: 'Government Job (SSC/UPSC)', icon: '🏛️', hint: 'Civil services personality test' },
+  { prof: 'Software Developer',icon: '💻', hint: 'Behavioural + system design' },
+  { prof: 'Data Scientist',   icon: '📊', hint: 'Case study & technical rounds' },
+  { prof: 'Doctor / Medical', icon: '🩺', hint: 'Clinical & HR interview rounds' },
+  { prof: 'Teacher',          icon: '📚', hint: 'Demo lesson & aptitude format' },
+  { prof: 'Marketing Manager',icon: '📣', hint: 'Campaign case & leadership rounds' },
+  { prof: 'Full Stack Developer', icon: '🖥️', hint: 'Coding + system design' },
+  { prof: 'Police / Defence', icon: '🪖', hint: 'SSB personality & GD rounds' },
 ];
 
 const DIFFICULTIES: { label: string; value: Difficulty }[] = [
@@ -40,31 +48,41 @@ const TIMERS = [
 ];
 
 // Voice "warm-up" — Easy build item. One short line per language so the
-// preview button actually demonstrates the language it's previewing,
-// not just a generic English sentence read in an accent.
+// preview button actually demonstrates the language it's previewing.
 const VOICE_PREVIEW_SAMPLES: Record<'en' | 'hi' | 'hinglish', string> = {
   en:       "Tell me about a time you handled a challenging situation at work.",
   hi:       "मुझे बताइए कि आपने काम के दौरान किसी मुश्किल स्थिति को कैसे संभाला।",
   hinglish: "Apna experience batao ek challenging situation ke baare mein jo aapne kaam ke dauran handle ki.",
 };
 
-// Reusable inline selection button
-function SelectBtn({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className="p-4 rounded-xl border text-left transition-all duration-200"
-      style={active
-        ? { borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }
-        : { borderColor: 'var(--border)', background: 'var(--surface-2)' }}
-      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border2)'; }}
-      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
-    >
-      {children}
-    </button>
-  );
+// ─── F29: Live preview builder ────────────────────────────────────────────────
+function buildLivePreview(
+  profession: string | null,
+  difficulty: Difficulty | null,
+  interviewType: InterviewType | null,
+  totalQ: number | null,
+): { line1: string; line2: string } | null {
+  if (!profession) return null;
+  const qStr = totalQ ? `${totalQ} questions` : '? questions';
+  const line1 = [
+    `Your session will have ${qStr} for`,
+    profession,
+    difficulty ? `· ${difficulty}` : '',
+    interviewType ? `· ${interviewType}` : '',
+  ].filter(Boolean).join(' ');
+
+  let line2 = '';
+  if (profession && difficulty && interviewType && totalQ) {
+    const mins: Record<number, number> = { 3: 8, 5: 12, 8: 18, 10: 25 };
+    line2 = `Estimated duration: ~${mins[totalQ] ?? 12} min. Aria will evaluate each answer instantly.`;
+  } else {
+    const missing: string[] = [];
+    if (!difficulty) missing.push('difficulty');
+    if (!interviewType) missing.push('question type');
+    if (!totalQ) missing.push('question count');
+    if (missing.length) line2 = `Still need: ${missing.join(', ')}.`;
+  }
+  return { line1, line2 };
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -75,6 +93,35 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ─── F28: Step indicator component ───────────────────────────────────────────
+function StepIndicator({ current, total }: { current: number; total: number }) {
+  return (
+    <div className="flex items-center gap-0 mb-6">
+      {Array.from({ length: total }).map((_, i) => (
+        <div key={i} className="flex items-center flex-1 last:flex-none">
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all duration-300 z-10"
+            style={{
+              background: i < current ? 'var(--accent)' : i === current ? 'var(--accent)' : 'var(--surface-2)',
+              border: `1.5px solid ${i <= current ? 'var(--accent)' : 'var(--border2)'}`,
+              color: i <= current ? '#fff' : 'var(--text-2)',
+              boxShadow: i === current ? '0 0 0 3px var(--accent-dim)' : 'none',
+            }}
+          >
+            {i < current ? '✓' : i + 1}
+          </div>
+          {i < total - 1 && (
+            <div
+              className="flex-1 h-px mx-1 transition-all duration-500"
+              style={{ background: i < current ? 'var(--accent)' : 'var(--border2)' }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InterviewSetupPageInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -82,6 +129,15 @@ function InterviewSetupPageInner() {
   const { showUpgradeModal } = useUIStore();
   const { data: meData } = useMe();
   const store = useInterviewStore();
+
+  // ─── F28: Multi-step state ───────────────────────────────────────────────
+  const [step, setStep] = useState(0); // 0=profession, 1=style, 2=review+start
+  const [slideDir, setSlideDir] = useState<'forward' | 'back'>('forward');
+
+  function goToStep(n: number) {
+    setSlideDir(n > step ? 'forward' : 'back');
+    setStep(n);
+  }
 
   const [customProfession, setCustomProfession] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -94,29 +150,18 @@ function InterviewSetupPageInner() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Auto-detect low-end devices and default to voice-only mode.
-  // This runs once on mount; if the user manually toggles the switch,
-  // their choice is honoured (avatarMode will already be set before this
-  // fires on any subsequent render, so we guard with the undefined check).
   useEffect(() => {
-    if (store.config.avatarMode !== undefined) return; // already set by user or a previous mount
+    if (useInterviewStore.getState().config.avatarMode !== undefined) return;
     if (typeof window === 'undefined') return;
-
     const nav = navigator as Navigator & {
       deviceMemory?: number;
       connection?: { effectiveType?: string };
     };
-    const isLowMemory  = (nav.deviceMemory ?? Infinity) < 2;          // < 2 GB RAM
+    const isLowMemory  = (nav.deviceMemory ?? Infinity) < 2;
     const isSlow2G     = nav.connection?.effectiveType === '2g';
-
-    if (isLowMemory || isSlow2G) {
-      store.setAvatarMode('voice-only');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isLowMemory || isSlow2G) useInterviewStore.getState().setAvatarMode('voice-only');
   }, []);
 
-  // Stop any in-flight preview audio and revoke its object URL on unmount
-  // — otherwise a user who navigates away mid-preview leaks the blob URL
-  // and leaves audio playing in the background.
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -131,43 +176,29 @@ function InterviewSetupPageInner() {
     const mode = params.get('mode') as SessionMode | null;
     const difficulty = params.get('difficulty') as Difficulty | null;
     const interviewType = params.get('interview_type') as InterviewType | null;
-    if (profession) store.setProfession(profession);
-    if (mode) store.setMode(mode);
-    if (difficulty) store.setDifficulty(difficulty);
-    if (interviewType) store.setInterviewType(interviewType);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const s = useInterviewStore.getState();
+    if (profession) s.setProfession(profession);
+    if (mode) s.setMode(mode);
+    if (difficulty) s.setDifficulty(difficulty);
+    if (interviewType) s.setInterviewType(interviewType);
   }, [params]);
 
-  // session_defaults was computed by the backend on every
-  // /api/me call but never consumed here — pre-fill the form from it so
-  // a user's first session is already personalised, the same way the
-  // backend intended. Only applies when nothing else has already set a
-  // profession (an explicit ?profession= query param, or the user's own
-  // selection, takes priority).
   useEffect(() => {
     if (!meData?.session_defaults) return;
     if (params.get('profession')) return;
-    if (store.config.profession) return;
-
+    if (useInterviewStore.getState().config.profession) return;
     const { profession, difficulty, interview_type } = meData.session_defaults;
-    if (profession) store.setProfession(profession);
-    if (difficulty) store.setDifficulty(difficulty as Difficulty);
-    if (interview_type) store.setInterviewType(interview_type as InterviewType);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meData?.session_defaults]);
+    const s = useInterviewStore.getState();
+    if (profession) s.setProfession(profession);
+    if (difficulty) s.setDifficulty(difficulty as Difficulty);
+    if (interview_type) s.setInterviewType(interview_type as InterviewType);
+  }, [meData?.session_defaults, params]);
 
-  // Use live /me plan so an upgrade takes effect without a page refresh.
   const livePlan    = meData?.user?.plan ?? user?.plan;
   const isFree      = !livePlan || (livePlan !== 'pro' && livePlan !== 'elite');
-  // Starter (and above) gets the real, ledger-metered /tts endpoint
-  // (VOICE_CAP_STARTER seconds/month) instead of the once-a-day free
-  // taste — they're paying for capped HD voice, not a daily sample.
   const hasVoiceQuota = livePlan === 'starter' || livePlan === 'pro' || livePlan === 'elite';
   const aiCallsLeft = useAuthStore((s) => s.aiCallsLeft());
 
-  // P1-A: monthly session cap check for free users.
-  // session_limit is null for paid plans (no cap). isFreeSessionCapReached
-  // is only true when the server confirms a non-null limit has been hit.
   const sessionCount = meData?.usage?.session_count ?? 0;
   const sessionLimit = meData?.usage?.session_limit ?? null;
   const isFreeSessionCapReached = isFree && sessionLimit !== null && sessionCount >= sessionLimit;
@@ -180,33 +211,20 @@ function InterviewSetupPageInner() {
     setCustomProfession('');
   }
 
-  // Voice "warm-up" — Easy build item. Free tier gets the once-per-IST-day
-  // warm-up endpoint; Starter/Pro/Elite get the real (ledger-metered) TTS
-  // endpoint since they're paying for HD voice, capped by plan (Starter
-  // 10 min/mo, Pro 60 min/mo, Elite unlimited — see VOICE_CAP_* in env.ts).
   async function playVoicePreview() {
     if (previewLoading) return;
     setPreviewLoading(true);
     setPreviewMsg(null);
-
     const sample = VOICE_PREVIEW_SAMPLES[store.config.lang];
-
-    // Already successfully fetched once this visit — replay the cached
-    // audio instead of hitting the once-per-IST-day endpoint again.
-    // (Switching language still needs a fresh fetch since the cached
-    // blob is for the old language; hasPreviewedToday only short-circuits
-    // a repeat tap of the same preview.)
     if (!hasVoiceQuota && hasPreviewedToday && audioRef.current && audioRef.current.dataset.lang === store.config.lang) {
       setPreviewLoading(false);
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
       return;
     }
-
     if (!hasVoiceQuota) {
       const result = await voiceApi.ttsWarmup(sample);
       setPreviewLoading(false);
-
       if (!result.ok) {
         if (result.reason === 'already_used_today') {
           setPreviewMsg("You've already used today's free preview — upgrade to Pro for unlimited HD voice, or come back tomorrow.");
@@ -221,9 +239,6 @@ function InterviewSetupPageInner() {
       playBlob(result.blob, store.config.lang);
       return;
     }
-
-    // Starter/Pro/Elite — real voice pipeline, language-aware (Sarvam for hi/hinglish).
-    // Metered server-side by requireVoiceQuota; not unlimited below Elite.
     const blob = await voiceApi.tts(sample, store.config.lang);
     setPreviewLoading(false);
     if (!blob) {
@@ -246,7 +261,6 @@ function InterviewSetupPageInner() {
   }
 
   async function handleStart() {
-    // Hard cap guard — belt-and-suspenders in case disabled button is bypassed (keyboard, race condition, etc.)
     if (isLocked) { showUpgradeModal('limit_hit'); return; }
     const profession = customProfession.trim() || selectedProfession;
     if (!profession) { setError('Please select or type a profession / field.'); return; }
@@ -257,6 +271,19 @@ function InterviewSetupPageInner() {
     router.push('/interview/session');
     setStarting(false);
   }
+
+  // ─── F29: Live preview ────────────────────────────────────────────────────
+  const livePreview = buildLivePreview(
+    customProfession.trim() || selectedProfession || null,
+    store.config.difficulty ?? null,
+    store.config.interviewType ?? null,
+    store.config.totalQ ?? null,
+  );
+
+  // Step 1 is complete when profession is picked
+  const step1Complete = !!(customProfession.trim() || selectedProfession);
+  // Step 2 is complete when difficulty + type + count are set
+  const step2Complete = !!(store.config.difficulty && store.config.interviewType && store.config.totalQ);
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
@@ -289,69 +316,114 @@ function InterviewSetupPageInner() {
         </p>
       </div>
 
-      {/* Mode */}
-      <Card className="p-5">
-        <SectionLabel>Interview Mode</SectionLabel>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { value: 'classic', emoji: '📝', title: 'Classic Mode', desc: 'One question at a time. Detailed per-answer feedback with English corrections.' },
-            { value: 'chat',    emoji: '💬', title: 'AI Chat Mode', desc: 'Natural back-and-forth with an AI interviewer. Most realistic experience.' },
-          ].map((m) => (
-            <SelectBtn key={m.value} active={store.config.mode === m.value} onClick={() => store.setMode(m.value as SessionMode)}>
-              <div className="text-2xl mb-2">{m.emoji}</div>
-              <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text-1)' }}>{m.title}</div>
-              <div className="text-xs leading-snug" style={{ color: 'var(--text-3)' }}>{m.desc}</div>
-            </SelectBtn>
-          ))}
-        </div>
-      </Card>
+      {/* ─── F28: Step indicator ─────────────────────────────────────────── */}
+      <StepIndicator current={step} total={3} />
 
-      {/* Profession */}
-      <Card className="p-5">
-        <SectionLabel>Profession / Field</SectionLabel>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {PROFESSIONS.map((p) => (
-            <button
-              key={p}
-              onClick={() => selectProfession(p)}
-              className="px-3 py-2 rounded-full text-xs font-semibold border transition-all"
-              style={selectedProfession === p && !customProfession
-                ? { background: 'var(--accent-dim)', borderColor: 'var(--accent-border)', color: 'var(--accent)' }
-                : { background: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text-2)' }}
-              onMouseEnter={e => { if (!(selectedProfession === p && !customProfession)) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border2)'; }}
-              onMouseLeave={e => { if (!(selectedProfession === p && !customProfession)) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+      {/* ─── Step 0: Profession ──────────────────────────────────────────── */}
+      {step === 0 && (
+        <div
+          key={step}
+          className="space-y-5"
+          style={{
+            animation: slideDir === 'forward'
+              ? 'slideInRight 0.28s cubic-bezier(.22,.68,0,1.2) both'
+              : 'slideInLeft 0.28s cubic-bezier(.22,.68,0,1.2) both',
+          }}
+        >
+          {/* ─── F27: Profession picker cards ─────────────────────────── */}
+          <Card className="p-5">
+            <SectionLabel>Profession / Field</SectionLabel>
+            <div
+              className="grid gap-3 mb-4"
+              style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}
             >
-              {p}
-            </button>
-          ))}
+              {PROFESSION_CARDS.map((card) => {
+                const isSelected = selectedProfession === card.prof && !customProfession;
+                return (
+                  <button
+                    key={card.prof}
+                    onClick={() => selectProfession(card.prof)}
+                    className="relative rounded-2xl p-4 flex flex-col items-center gap-2 text-center cursor-pointer transition-all duration-200 border"
+                    style={{
+                      background: isSelected ? 'var(--accent-dim)' : 'var(--surface-2)',
+                      borderColor: isSelected ? 'var(--accent-border)' : 'var(--border2)',
+                      transform: isSelected ? 'translateY(-2px)' : 'none',
+                      boxShadow: isSelected ? '0 4px 16px rgba(var(--accent-rgb, 99,102,241),.18)' : 'none',
+                    }}
+                  >
+                    {/* Checkmark */}
+                    <span
+                      className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-200"
+                      style={{
+                        background: isSelected ? 'var(--accent)' : 'var(--border)',
+                        color: '#fff',
+                        opacity: isSelected ? 1 : 0,
+                        transform: isSelected ? 'scale(1)' : 'scale(0)',
+                      }}
+                    >
+                      ✓
+                    </span>
+                    <div className="text-2xl">{card.icon}</div>
+                    <div className="text-xs font-semibold leading-tight" style={{ color: 'var(--text-1)' }}>{card.prof}</div>
+                    <div className="text-[10px] leading-snug" style={{ color: 'var(--text-3)' }}>{card.hint}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <Input
+              placeholder="Or type any field — MBA, Nurse, IAS Officer, CA…"
+              value={customProfession}
+              onChange={(e) => { setCustomProfession(e.target.value); if (e.target.value) store.setProfession(''); }}
+            />
+          </Card>
+
+          {/* Mode */}
+          <Card className="p-5">
+            <SectionLabel>Interview Mode</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: 'classic', emoji: '📝', title: 'Classic Mode', desc: 'One question at a time. Detailed per-answer feedback with English corrections.' },
+                { value: 'chat',    emoji: '💬', title: 'AI Chat Mode', desc: 'Natural back-and-forth with an AI interviewer. Most realistic experience.' },
+              ].map((m) => {
+                const isActive = store.config.mode === m.value;
+                return (
+                  <button
+                    key={m.value}
+                    onClick={() => store.setMode(m.value as SessionMode)}
+                    className="p-4 rounded-xl border text-left transition-all duration-200"
+                    style={isActive
+                      ? { borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }
+                      : { borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+                  >
+                    <div className="text-2xl mb-2">{m.emoji}</div>
+                    <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text-1)' }}>{m.title}</div>
+                    <div className="text-xs leading-snug" style={{ color: 'var(--text-3)' }}>{m.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* F28: Next button */}
+          <div className="flex justify-end">
+            <Button
+              disabled={!step1Complete}
+              onClick={() => goToStep(1)}
+            >
+              Choose Style →
+            </Button>
+          </div>
         </div>
-        <Input
-          placeholder="Or type any field — MBA, Nurse, IAS Officer, CA…"
-          value={customProfession}
-          onChange={(e) => setCustomProfession(e.target.value)}
-        />
-      </Card>
+      )}
 
-      {/* Difficulty */}
-      <Card className="p-5">
-        <SectionLabel>Difficulty</SectionLabel>
-        <ChipGroup options={DIFFICULTIES} value={store.config.difficulty} onChange={(v) => store.setDifficulty(v as Difficulty)} />
-      </Card>
+      {/* ─── Step 1: Style ───────────────────────────────────────────────── */}
+      {step === 1 && (
+        <div
+          key={step}
+          className="space-y-4"
+            <ChipGroup options={DIFFICULTIES} value={store.config.difficulty} onChange={(v) => store.setDifficulty(v as Difficulty)} />
+          </Card>
 
-      {/* Advanced toggle */}
-      <button
-        onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-sm flex items-center gap-2 transition-colors"
-        style={{ color: 'var(--text-3)' }}
-        onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-2)')}
-        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
-      >
-        <span>⚙</span>
-        {showAdvanced ? 'Hide advanced options' : 'Show advanced options'}
-      </button>
-
-      {showAdvanced && (
-        <div className="space-y-4">
           <Card className="p-5">
             <SectionLabel>Interview Type</SectionLabel>
             <ChipGroup options={INTERVIEW_TYPES} value={store.config.interviewType} onChange={(v) => store.setInterviewType(v as InterviewType)} />
@@ -386,17 +458,23 @@ function InterviewSetupPageInner() {
                 { lang: 'en',      flag: '🇬🇧', label: 'English' },
                 { lang: 'hi',      flag: '🇮🇳', label: 'हिंदी' },
                 { lang: 'hinglish',flag: '🇮🇳', label: 'Hinglish' },
-              ].map((l) => (
-                <SelectBtn key={l.lang} active={store.config.lang === l.lang} onClick={() => { store.setLang(l.lang as 'en' | 'hi' | 'hinglish'); setPreviewMsg(null); }}>
-                  <div className="text-lg text-center">{l.flag}</div>
-                  <div className="text-xs text-center mt-1" style={{ color: 'var(--text-1)' }}>{l.label}</div>
-                </SelectBtn>
-              ))}
+              ].map((l) => {
+                const isActive = store.config.lang === l.lang;
+                return (
+                  <button
+                    key={l.lang}
+                    onClick={() => { store.setLang(l.lang as 'en' | 'hi' | 'hinglish'); setPreviewMsg(null); }}
+                    className="p-4 rounded-xl border text-left transition-all duration-200"
+                    style={isActive
+                      ? { borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }
+                      : { borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+                  >
+                    <div className="text-lg text-center">{l.flag}</div>
+                    <div className="text-xs text-center mt-1" style={{ color: 'var(--text-1)' }}>{l.label}</div>
+                  </button>
+                );
+              })}
             </div>
-
-            {/* Voice "warm-up" — Easy build item. ~30s HD voice taste,
-                available on Free tier too (once/day server-side gate);
-                Starter+ get the real metered endpoint instead. */}
             <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <button
                 type="button"
@@ -405,150 +483,220 @@ function InterviewSetupPageInner() {
                 className="text-xs font-semibold px-3 py-2 rounded-lg border transition-colors disabled:opacity-60 flex items-center gap-2"
                 style={{ borderColor: 'var(--blue-border)', background: 'var(--blue-dim)', color: 'var(--accent)' }}
               >
-                {previewLoading ? (
-                  <>🔊 Loading preview…</>
-                ) : !hasVoiceQuota && hasPreviewedToday ? (
-                  <>🔊 Replay preview</>
-                ) : (
-                  <>🔊 Preview HD voice {!hasVoiceQuota ? '(free taste)' : ''}</>
-                )}
+                {previewLoading ? <>🔊 Loading preview…</> : !hasVoiceQuota && hasPreviewedToday ? <>🔊 Replay preview</> : <>🔊 Preview HD voice {!hasVoiceQuota ? '(free taste)' : ''}</>}
               </button>
-              {previewMsg && (
-                <p className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>{previewMsg}</p>
-              )}
+              {previewMsg && (<p className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>{previewMsg}</p>)}
             </div>
           </Card>
-        </div>
-      )}
 
-      {/* Voice-only toggle — saves data on slow / low-memory devices */}
-      <div
-        className="flex items-center justify-between rounded-xl px-4 py-3 border"
-        style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}
-      >
-        <div>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-            📵 Voice only (saves data)
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
-            Disables the AI avatar — audio only. Best for 2G / low-memory devices.
-          </p>
-        </div>
-        <button
-          role="switch"
-          aria-checked={store.config.avatarMode === 'voice-only'}
-          onClick={() =>
-            store.setAvatarMode(
-              store.config.avatarMode === 'voice-only' ? 'full' : 'voice-only'
-            )
-          }
-          className="relative flex-shrink-0 w-11 h-6 rounded-full border-2 transition-colors duration-200 focus:outline-none"
-          style={{
-            background:
-              store.config.avatarMode === 'voice-only'
-                ? 'var(--accent)'
-                : 'var(--surface-3, #d1d5db)',
-            borderColor:
-              store.config.avatarMode === 'voice-only'
-                ? 'var(--accent)'
-                : 'var(--border)',
-          }}
-        >
-          <span
-            className="block w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
-            style={{
-              transform:
-                store.config.avatarMode === 'voice-only'
-                  ? 'translateX(20px)'
-                  : 'translateX(2px)',
-              marginTop: '1px',
-            }}
-          />
-        </button>
-      </div>
-
-      {/* JD paste — optional, collapses under a toggle */}
-      <div>
-        <button
-          onClick={() => {
-            setShowJd(!showJd);
-            // Clear stored JD text when the user collapses the panel
-            // so a subsequent session without a JD isn't polluted by a
-            // previous paste that the user forgot to clear.
-            if (showJd) store.setJdText('');
-          }}
-          className="text-sm flex items-center gap-2 transition-colors"
-          style={{ color: 'var(--text-3)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-2)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
-        >
-          <span>📋</span>
-          {showJd ? 'Remove job description' : 'Paste a job description (optional)'}
-        </button>
-        {showJd && (
-          <div className="mt-3">
-            <Card className="p-5">
-              <SectionLabel>Job Description</SectionLabel>
-              <p className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
-                AI will generate questions tailored to this specific role instead of generic ones.
-              </p>
-              <textarea
-                value={store.config.jdText ?? ''}
-                onChange={(e) => store.setJdText(e.target.value.slice(0, 4_000))}
-                placeholder="Paste the job description here — responsibilities, required skills, tech stack…"
-                rows={6}
-                maxLength={4_000}
-                className="w-full px-4 py-3 rounded-xl border text-sm resize-y focus:outline-none transition-colors"
-                style={{
-                  background:  'var(--surface-2)',
-                  borderColor: store.config.jdText ? 'var(--accent-border)' : 'var(--border)',
-                  color:       'var(--text-1)',
-                }}
-                onFocus={e  => (e.currentTarget.style.borderColor = 'var(--accent-border)')}
-                onBlur={e   => (e.currentTarget.style.borderColor = store.config.jdText ? 'var(--accent-border)' : 'var(--border)')}
-              />
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                  {store.config.jdText
-                    ? `✓ ${store.config.jdText.length.toLocaleString()} / 4,000 chars — questions will be tailored to this JD`
-                    : 'Supports English, Hindi, or mixed — paste any JD'}
-                </p>
+          {/* JD paste */}
+          <div>
+            <button
+              onClick={() => { setShowJd(!showJd); if (showJd) store.setJdText(''); }}
+              className="text-sm flex items-center gap-2 transition-colors"
+              style={{ color: 'var(--text-3)' }}
+            >
+              <span>📋</span>
+              {showJd ? 'Remove job description' : 'Paste a job description (optional)'}
+            </button>
+            {showJd && (
+              <div className="mt-3">
+                <Card className="p-5">
+                  <SectionLabel>Job Description</SectionLabel>
+                  <p className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+                    AI will generate questions tailored to this specific role instead of generic ones.
+                  </p>
+                  <textarea
+                    value={store.config.jdText ?? ''}
+                    onChange={(e) => store.setJdText(e.target.value.slice(0, 4_000))}
+                    placeholder="Paste the job description here…"
+                    rows={6}
+                    maxLength={4_000}
+                    className="w-full px-4 py-3 rounded-xl border text-sm resize-y focus:outline-none transition-colors"
+                    style={{
+                      background: 'var(--surface-2)',
+                      borderColor: store.config.jdText ? 'var(--accent-border)' : 'var(--border)',
+                      color: 'var(--text-1)',
+                    }}
+                    onFocus={e  => (e.currentTarget.style.borderColor = 'var(--accent-border)')}
+                    onBlur={e   => (e.currentTarget.style.borderColor = store.config.jdText ? 'var(--accent-border)' : 'var(--border)')}
+                  />
+                  <p className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>
+                    {store.config.jdText
+                      ? `✓ ${store.config.jdText.length.toLocaleString()} / 4,000 chars — questions will be tailored to this JD`
+                      : 'Supports English, Hindi, or mixed — paste any JD'}
+                  </p>
+                </Card>
               </div>
-            </Card>
+            )}
           </div>
-        )}
-      </div>
 
-      {error && (
-        <p className="text-sm rounded-xl px-4 py-3" style={{ color: 'var(--error)', background: 'var(--error-dim)', border: '1px solid var(--error-border)' }}>
-          {error}
-        </p>
-      )}
+          {/* Voice-only toggle */}
+          <div
+            className="flex items-center justify-between rounded-xl px-4 py-3 border"
+            style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}
+          >
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>📵 Voice only (saves data)</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>Disables the AI avatar — audio only. Best for 2G / low-memory devices.</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={store.config.avatarMode === 'voice-only'}
+              onClick={() => store.setAvatarMode(store.config.avatarMode === 'voice-only' ? 'full' : 'voice-only')}
+              className="relative flex-shrink-0 w-11 h-6 rounded-full border-2 transition-colors duration-200 focus:outline-none"
+              style={{
+                background: store.config.avatarMode === 'voice-only' ? 'var(--accent)' : 'var(--surface-3, #d1d5db)',
+                borderColor: store.config.avatarMode === 'voice-only' ? 'var(--accent)' : 'var(--border)',
+              }}
+            >
+              <span
+                className="block w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{
+                  transform: store.config.avatarMode === 'voice-only' ? 'translateX(20px)' : 'translateX(2px)',
+                  marginTop: '1px',
+                }}
+              />
+            </button>
+          </div>
 
-      {/* P2-A: Humanized coaching indicator — shown only when the backend
-           HUMANIZE_COACH flag is on (surfaced via NEXT_PUBLIC_FF_HUMANIZED_COACH_PROMPT).
-           This is purely informational: it tells the user Aria will adapt her
-           tone to their confidence level during the session. The actual tone
-           detection + prompt rewrite happens in backend/ai.prompt-service.ts. */}
-      {FLAG.HUMANIZED_COACH_PROMPT && (
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
-          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
-        >
-          <span aria-hidden>✨</span>
-          Smart coaching active — Aria adapts her feedback style to your confidence
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => goToStep(0)}>← Back</Button>
+            <Button className="flex-1" disabled={!step2Complete} onClick={() => goToStep(2)}>Review →</Button>
+          </div>
         </div>
       )}
 
-      <Button
-        size="lg"
-        className="w-full"
-        loading={starting}
-        disabled={isLocked}
-        onClick={handleStart}
-      >
-        ▶ Start Interview
-      </Button>
+      {/* ─── Step 2: Review + Start ──────────────────────────────────────── */}
+      {step === 2 && (
+        <div
+          key={step}
+          className="space-y-4"
+          style={{
+            animation: slideDir === 'forward'
+              ? 'slideInRight 0.28s cubic-bezier(.22,.68,0,1.2) both'
+              : 'slideInLeft 0.28s cubic-bezier(.22,.68,0,1.2) both',
+          }}
+        >
+          {/* ─── F29: Live preview card ───────────────────────────────────── */}
+          {livePreview && (
+            <Card
+              className="p-5 transition-all duration-300"
+              style={{
+                background: 'var(--blue-dim)',
+                borderColor: 'var(--blue-border)',
+              }}
+            >
+              <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
+                Session Preview
+              </div>
+              <p className="text-sm font-medium leading-relaxed mb-1" style={{ color: 'var(--text-1)' }}>
+                {livePreview.line1.split(' ').map((word, i) => {
+                  // Highlight profession, difficulty, type tokens
+                  const isProfession = word === (customProfession.trim() || selectedProfession);
+                  const isDiff = store.config.difficulty && word.includes(store.config.difficulty);
+                  const isType = store.config.interviewType && word.includes(store.config.interviewType);
+                  if (isProfession || isDiff || isType) {
+                    return (
+                      <span key={i} className="inline-block px-1.5 py-0.5 rounded mx-0.5 text-xs font-bold"
+                        style={{ background: 'var(--accent)', color: '#fff' }}>
+                        {word}
+                      </span>
+                    );
+                  }
+                  return <span key={i}>{word} </span>;
+                })}
+              </p>
+              {livePreview.line2 && (
+                <p className="text-xs" style={{ color: 'var(--text-3)' }}>{livePreview.line2}</p>
+              )}
+            </Card>
+          )}
+
+          {/* Review summary */}
+          <Card className="p-5 space-y-3">
+            <SectionLabel>Your Setup</SectionLabel>
+            {[
+              { label: 'Profession', value: customProfession.trim() || selectedProfession || '—' },
+              { label: 'Mode', value: store.config.mode === 'chat' ? 'AI Chat Mode' : 'Classic Mode' },
+              { label: 'Difficulty', value: store.config.difficulty || '—' },
+              { label: 'Type', value: store.config.interviewType || '—' },
+              ...(store.config.mode === 'classic' ? [
+                { label: 'Questions', value: `${store.config.totalQ}` },
+                { label: 'Timer', value: store.config.timerSecs ? `${store.config.timerSecs / 60} min` : 'No Timer' },
+              ] : []),
+              { label: 'Language', value: store.config.lang === 'hi' ? 'हिंदी' : store.config.lang === 'hinglish' ? 'Hinglish' : 'English' },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: 'var(--text-3)' }}>{label}</span>
+                <span className="text-xs font-semibold" style={{ color: 'var(--text-1)' }}>{value}</span>
+              </div>
+            ))}
+            <button
+              onClick={() => goToStep(0)}
+              className="text-xs mt-2 transition-colors"
+              style={{ color: 'var(--accent)' }}
+            >
+              ✏ Edit profession / mode
+            </button>
+            {' · '}
+            <button
+              onClick={() => goToStep(1)}
+              className="text-xs transition-colors"
+              style={{ color: 'var(--accent)' }}
+            >
+              ✏ Edit style
+            </button>
+          </Card>
+
+          {FLAG.HUMANIZED_COACH_PROMPT && (
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
+            >
+              <span aria-hidden>✨</span>
+              Smart coaching active — Aria adapts her feedback style to your confidence
+            </div>
+          )}
+
+          {error && (
+            <p className="text-sm rounded-xl px-4 py-3" style={{ color: 'var(--error)', background: 'var(--error-dim)', border: '1px solid var(--error-border)' }}>
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => goToStep(1)}>← Back</Button>
+            <Button
+              size="lg"
+              className="flex-1"
+              loading={starting}
+              disabled={isLocked || (!customProfession.trim() && !selectedProfession)}
+              onClick={handleStart}
+              style={step1Complete && step2Complete ? {
+                boxShadow: '0 0 0 3px var(--accent-dim), 0 4px 20px rgba(99,102,241,.3)',
+              } : undefined}
+            >
+              🎙 Start Interview
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Slide animation keyframes */}
+      <style>{`
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(32px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-32px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @media (max-width: 480px) {
+          .pp27-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -9,6 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { prepPathsApi } from '../api';
 import { useAuthStore } from '@/store/auth';
+import type { MyEnrollmentResponse } from '../types';
 
 const QK_PREP_PATHS        = ['prep-paths'] as const;
 const QK_MY_PREP_ENROLLMENT = ['prep-paths', 'my-enrollment'] as const;
@@ -53,9 +54,27 @@ export function useEnrollInPrepPath() {
   return useMutation({
     mutationFn: (prepPathId: string) => prepPathsApi.enroll(prepPathId),
     onSuccess: (res) => {
-      if (res.ok) {
-        qc.invalidateQueries({ queryKey: QK_MY_PREP_ENROLLMENT });
-      }
+      if (!res.ok) return;
+
+      // Seed the enrollment cache immediately from the EnrollResponse so that
+      // goToSetupForToday() reads the correct `today` config the instant the
+      // mutation resolves — without waiting for the background refetch to land.
+      // If the user clicks "Continue" before the refetch completes, myEnrollment.today
+      // would otherwise still be null (pre-enroll state) and navigation would silently
+      // abort in goToSetupForToday's `if (!today) return` guard.
+      qc.setQueryData<MyEnrollmentResponse>(QK_MY_PREP_ENROLLMENT, (prev) => ({
+        ...prev,
+        enrollment:  res.data.enrollment,
+        current_day: res.data.current_day,
+        today:       res.data.today,
+        // path is not returned by EnrollResponse; preserve whatever was cached.
+        path: prev?.path,
+        is_complete: false,
+      }));
+
+      // Invalidate so the next focus/mount fetches authoritative server state,
+      // but the optimistic seed above avoids the blank-today race.
+      qc.invalidateQueries({ queryKey: QK_MY_PREP_ENROLLMENT });
     },
   });
 }

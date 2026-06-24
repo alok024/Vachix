@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useUIStore } from '@/store/ui';
 import { useAuthStore } from '@/store/auth';
 import { useLogout } from '@/features/auth/hooks';
+import { useMe } from '@/features/user/hooks';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -76,6 +77,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const logout    = useLogout();
 
+  // Feature 41 — streak data (useMe is already called by dashboard/profile;
+  // staleTime=30s means this is a cache hit in the vast majority of renders)
+  const { data: meData } = useMe();
+  const streak = meData?.stats?.streak ?? 0;
+  const streakVisible = streak > 0;
+  const streakPulse   = streak >= 7;
+
+  // Feature 42 — bottom nav sliding indicator
+  const bottomNavRef = useRef<HTMLElement>(null);
+
   const isFree  = !user?.plan || (user.plan !== 'pro' && user.plan !== 'elite');
   const planLabel =
     user?.plan === 'elite'   ? '◈ Elite' :
@@ -86,6 +97,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Hide bottom nav on session page — it needs full immersive height
   const isSessionPage = pathname === '/interview/session';
+
+  // Feature 42 — sync sliding indicator whenever pathname or nav changes
+  const syncBottomNavIndicator = useCallback(() => {
+    const nav = bottomNavRef.current;
+    if (!nav) return;
+    const visibleItems = BOTTOM_NAV.filter((n) => !(n.freeOnly && !isFree));
+    const count = visibleItems.length;
+    const activeIdx = visibleItems.findIndex(
+      (n) => pathname === n.href || pathname.startsWith(n.href + '/')
+    );
+    nav.style.setProperty('--bn-ind-w', `${100 / count}%`);
+    if (activeIdx >= 0) {
+      nav.style.setProperty('--bn-ind-x', `${activeIdx * 100}%`);
+    }
+  }, [pathname, isFree]);
+
+  useEffect(() => {
+    syncBottomNavIndicator();
+  }, [syncBottomNavIndicator]);
+
+  // Feature 40 — spring drawer: apply spring transition on open, fast on close
+  useEffect(() => {
+    const aside = document.getElementById('vachix-sidebar');
+    if (!aside) return;
+    if (sidebarOpen) {
+      aside.classList.remove('closing');
+    } else {
+      aside.classList.add('closing');
+      const tid = setTimeout(() => aside.classList.remove('closing'), 220);
+      return () => clearTimeout(tid);
+    }
+  }, [sidebarOpen]);
+
+  // Feature 39 — flash helper: closes sidebar after flash animation
+  function handleNavClick() {
+    closeSidebar();
+  }
 
   async function handleLogout() {
     await logout.mutateAsync();
@@ -99,9 +147,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop Sidebar */}
       <aside
+        id="vachix-sidebar"
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-56 flex flex-col',
-          'border-r transition-transform duration-300 ease-out',
+          'border-r sidebar-drawer',
           sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
           'lg:translate-x-0 lg:shadow-none'
         )}
@@ -144,8 +193,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
                 <Link
                   href={item.href}
-                  onClick={closeSidebar}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium mb-0.5 transition-all duration-200"
+                  onClick={(e) => {
+                    // Feature 39: flash the newly-active item
+                    const el = e.currentTarget as HTMLElement;
+                    el.classList.add('sidebar-flashing');
+                    el.addEventListener('animationend', () => el.classList.remove('sidebar-flashing'), { once: true });
+                    handleNavClick();
+                  }}
+                  className={cn(
+                    'sidebar-nav-link flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium mb-0.5 transition-all duration-200',
+                    active && 'sidebar-active'
+                  )}
                   style={{
                     background: active ? 'var(--accent-dim)' : 'transparent',
                     color:      active ? 'var(--accent)' : 'var(--text-2)',
@@ -197,6 +255,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-1)' }}>{name}</p>
               <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>{planLabel} plan</p>
             </div>
+            {/* Feature 41 — streak badge */}
+            <span
+              className={cn(
+                'streak-badge font-mono',
+                streakVisible && 'streak-visible',
+                streakPulse   && 'streak-pulse'
+              )}
+              aria-label={streakVisible ? `${streak}-day streak` : undefined}
+            >
+              🔥 {streak}
+            </span>
           </button>
         </div>
       </aside>
@@ -264,7 +333,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ADDED: replaces the invisible hamburger-only nav for mobile users */}
       {!isSessionPage && (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t backdrop-blur-xl"
+          ref={bottomNavRef}
+          className="bottom-nav-slider fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t backdrop-blur-xl"
           style={{
             background: 'var(--nav-bg)',
             borderColor: 'var(--border)',
@@ -274,26 +344,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label="Main navigation"
         >
           <div className="flex items-stretch h-14">
-            {BOTTOM_NAV.filter((n) => !(n.freeOnly && !isFree)).map((item) => {
+            {BOTTOM_NAV.filter((n) => !(n.freeOnly && !isFree)).map((item, idx) => {
               const active = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={(e) => {
+                    // Feature 42: spring-scale the icon on tap
+                    const icon = (e.currentTarget as HTMLElement).querySelector('.bn-icon') as HTMLElement | null;
+                    if (icon) {
+                      icon.classList.remove('bn-tapping');
+                      // force reflow to restart animation
+                      void icon.offsetWidth;
+                      icon.classList.add('bn-tapping');
+                      icon.addEventListener('animationend', () => icon.classList.remove('bn-tapping'), { once: true });
+                    }
+                    // Update indicator immediately (before route change)
+                    const nav = bottomNavRef.current;
+                    if (nav) {
+                      const visibleItems = BOTTOM_NAV.filter((n) => !(n.freeOnly && !isFree));
+                      const count = visibleItems.length;
+                      nav.style.setProperty('--bn-ind-w', `${100 / count}%`);
+                      nav.style.setProperty('--bn-ind-x', `${idx * 100}%`);
+                    }
+                  }}
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors duration-150"
                   style={{ color: active ? 'var(--accent)' : 'var(--text-3)' }}
                   aria-label={item.label}
                   aria-current={active ? 'page' : undefined}
                 >
-                  {/* Active pill */}
-                  {active && (
-                    <span
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full"
-                      style={{ background: 'var(--accent)' }}
-                    />
-                  )}
                   <item.icon
-                    className="w-5 h-5"
+                    className="bn-icon w-5 h-5"
                     strokeWidth={active ? 2.5 : 1.8}
                   />
                   <span className="text-[10px] font-medium leading-none">{item.label}</span>

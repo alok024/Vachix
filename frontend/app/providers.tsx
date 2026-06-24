@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useEffect } from 'react';
+import { ApiError } from '@/lib/api';
 import { UpgradeModal } from '@/components/shared/UpgradeModal';
 import { ToastStack } from '@/components/shared/ToastStack';
 import posthog from 'posthog-js';
@@ -15,8 +16,14 @@ function makeQueryClient() {
         staleTime: 30_000,
         gcTime: 5 * 60 * 1000,
         retry: (failureCount, error) => {
-          if (error instanceof Error && error.message.includes('401')) return false;
-          if (error instanceof Error && error.message.includes('403')) return false;
+          // ApiError carries the HTTP status from apiCall results.
+          // Don't retry auth failures — they won't resolve without user action
+          // and retrying adds latency on every expired-token / forbidden load.
+          // Previously matched on error.message.includes('401'/'403') which
+          // never fired because query fns throw generic strings, not status codes.
+          if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return false;
+          // Fallback for legacy throw sites that still use plain Error strings.
+          if (error instanceof Error && (error.message.includes('unauthorized') || error.message.includes('session_expired'))) return false;
           return failureCount < 2;
         },
       },

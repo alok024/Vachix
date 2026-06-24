@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS prep_paths (
 -- user_prep_enrollments table
 CREATE TABLE IF NOT EXISTS user_prep_enrollments (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id       bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   prep_path_id  TEXT NOT NULL REFERENCES prep_paths(id) ON DELETE CASCADE,
   enrolled_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at  TIMESTAMPTZ,

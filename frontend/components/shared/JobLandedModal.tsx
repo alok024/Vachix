@@ -35,6 +35,7 @@ export function JobLandedModal({ onClose, userName }: Props) {
   const [ogUrl,       setOgUrl]       = useState('');
   const [boardUrl,    setBoardUrl]    = useState<string | null>(null);
   const [copied,      setCopied]      = useState(false);
+  const [copyFailed,  setCopyFailed]  = useState(false);
 
   async function handleSubmit() {
     if (!role.trim()) { setError('Please enter your new role.'); return; }
@@ -75,9 +76,13 @@ export function JobLandedModal({ onClose, userName }: Props) {
     try {
       await navigator.clipboard.writeText(ogUrl);
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard blocked — silently ignore
+      // Clipboard API blocked (permissions denied, non-HTTPS, mobile restriction).
+      // Show a brief error label on the button instead of silently failing.
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 3000);
     }
   }
 
@@ -276,11 +281,11 @@ export function JobLandedModal({ onClose, userName }: Props) {
                   onClick={copyOgUrl}
                   className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
                   style={{
-                    background: copied ? 'var(--success)' : 'var(--accent)',
+                    background: copied ? 'var(--success)' : copyFailed ? 'var(--error)' : 'var(--accent)',
                     color: '#fff',
                   }}
                 >
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? 'Copied!' : copyFailed ? 'Failed' : 'Copy'}
                 </button>
               </div>
 

@@ -71,7 +71,7 @@ WHERE monthly_session_reset_at IS NULL;
 --        { p_user_id: userId, p_cap: SESSION_CAP_FREE });
 --      if (result.data?.[0]?.blocked) throw new AppError(429, ...);
 --
-CREATE OR REPLACE FUNCTION increment_session_count(p_user_id uuid, p_cap integer)
+CREATE OR REPLACE FUNCTION increment_session_count(p_user_id bigint, p_cap integer)
 RETURNS TABLE (new_count integer, blocked boolean)
 LANGUAGE plpgsql
 AS $$
@@ -81,8 +81,13 @@ BEGIN
   -- Upsert the usage row (handles first-ever session for the user).
   -- ON CONFLICT ensures we only touch one row and hold a row-level lock
   -- for the duration of this statement, preventing the TOCTOU race.
-  INSERT INTO usage (user_id, call_count, monthly_session_count, monthly_session_reset_at, updated_at)
-  VALUES (p_user_id, 0, 0, now(), now())
+  -- period_start is included because the column may carry a NOT NULL constraint
+  -- from the base usage table; omitting it on a brand-new user's first session
+  -- would throw, leave the row uninserted, and cause the subsequent UPDATE to
+  -- find no row — returning v_count = NULL so blocked = NULL (falsy), silently
+  -- bypassing the cap check.
+  INSERT INTO usage (user_id, call_count, monthly_session_count, monthly_session_reset_at, period_start, updated_at)
+  VALUES (p_user_id, 0, 0, now(), date_trunc('month', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata', now())
   ON CONFLICT (user_id) DO NOTHING;
 
   -- Now update conditionally — single atomic statement, row-locked.

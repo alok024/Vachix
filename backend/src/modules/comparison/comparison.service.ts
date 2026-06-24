@@ -125,7 +125,14 @@ export async function createComparison(
 
   await db.createScoreComparison({
     id:             id,
-    session_id:     Number(sessionId),  // sessions.id is int8; cast string param to number for PostgREST
+    session_id:     (() => {
+      // sessions.id is int8; PostgREST requires a JS number.
+      // Validate before casting: a non-numeric sessionId produces NaN which
+      // PostgREST silently ignores, inserting a row with a null FK.
+      const n = Number(sessionId);
+      if (!Number.isFinite(n)) throw new Error(`Invalid sessionId (non-numeric): ${sessionId}`);
+      return n;
+    })(),
     user_id:        userId,
     question_index: questionIndex,
     question_text:  fb.question,

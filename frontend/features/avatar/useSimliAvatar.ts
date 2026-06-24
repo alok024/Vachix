@@ -129,6 +129,10 @@ export function useSimliAvatar(
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional: containerRef and clientRef are React refs (stable identity);
+    // store.setAvatarMode is a zustand action (stable across renders).
+    // didInit guards against double-init on StrictMode double-invoke.
+    // The only value that should restart the effect is requestedVoiceOnly.
   }, [requestedVoiceOnly]);
 
   return { ready, voiceOnly };

@@ -56,7 +56,7 @@ Button.displayName = 'Button';
 
 // Badge
 
-type BadgeVariant = 'default' | 'accent' | 'success' | 'warn' | 'danger' | 'purple' | 'pro' | 'elite' | 'free' | 'starter';
+export type BadgeVariant = 'default' | 'accent' | 'success' | 'warn' | 'danger' | 'purple' | 'pro' | 'elite' | 'free' | 'starter';
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -273,53 +273,74 @@ export function ProgressBar({ value, max = 100, color, className, label, showVal
   );
 }
 
-// ScoreBadge
-
-export function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
-  // scores are 0-10 everywhere this component is used, but the
-  // thresholds here were written for a 0-100 scale — every badge rendered
-  // red regardless of actual performance. Match scoreColor's convention.
-  const color =
-    score >= 7 ? 'var(--success)' : score >= 4 ? 'var(--warn)' : 'var(--error)';
-  const dim =
-    score >= 7 ? 'var(--success-dim)' : score >= 4 ? 'var(--warn-dim)' : 'var(--error-dim)';
-  const border =
-    score >= 7 ? 'var(--success-border)' : score >= 4 ? 'var(--warn-border)' : 'var(--error-dim)';
-  const cls = size === 'sm' ? 'text-sm w-9 h-9' : size === 'lg' ? 'text-xl w-14 h-14' : 'text-base w-11 h-11';
-
-  return (
-    <div
-      className={cn('rounded-xl font-bold flex items-center justify-center tabular-nums', cls)}
-      style={{ background: dim, color, border: `1px solid ${border}` }}
-    >
-      {score}
-    </div>
-  );
-}
-
 // ScoreRing
+//
+// Feature 44 — one "score visual grammar": every score in the app
+// (per-answer 0-10, job-readiness 0-100, history list, summary feedback,
+// public results board) renders as the same ring-with-number shape.
+//
+// `max` lets callers pass either a 0-10 answer score or a 0-100 readiness
+// score and get the same visual treatment. Colour thresholds are kept at
+// the convention each scale already used most often before this change —
+// 0-100 callers keep their existing >=80 / >=60 cutoffs (job-readiness,
+// unchanged), 0-10 callers get >=7 / >=4 (ScoreBadge's old convention,
+// now the app-wide standard for that scale). NOTE: a couple of call sites
+// previously used slightly different cutoffs (e.g. >=5 instead of >=4)
+// for the 0-10 scale — those move to this single convention as part of
+// unifying the grammar, so a small number of borderline scores (e.g.
+// exactly 4/10) may now render amber instead of red. This is intentional.
+//
+// `size` accepts either a pixel number (legacy API, unchanged for existing
+// callers) or a named preset for new call sites: sm=36, md=56, lg=80.
+const SCORE_RING_SIZE_PRESET = { sm: 36, md: 56, lg: 80 } as const;
 
-export function ScoreRing({ score, size = 80, label }: { score: number; size?: number; label?: string }) {
-  const r = (size / 2) - 8;
+export function ScoreRing({
+  score,
+  size = 80,
+  max = 100,
+  label,
+}: {
+  score: number;
+  size?: number | keyof typeof SCORE_RING_SIZE_PRESET;
+  max?: number;
+  label?: string;
+}) {
+  const px = typeof size === 'number' ? size : SCORE_RING_SIZE_PRESET[size];
+  const pct = max > 0 ? score / max : 0;
+  const r = (px / 2) - 8;
   const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
+  const offset = circ - Math.max(0, Math.min(1, pct)) * circ;
+
+  // CSS transition only fires when strokeDashoffset changes after mount.
+  // Starting at circ (empty ring) and transitioning to `offset` on the
+  // next paint gives the animation a non-zero delta to work with.
+  const [animatedOffset, setAnimatedOffset] = React.useState(circ);
+  React.useEffect(() => {
+    // rAF ensures the browser has painted the initial state (circ) before
+    // we update to the target, giving the CSS transition something to animate.
+    const id = requestAnimationFrame(() => setAnimatedOffset(offset));
+    return () => cancelAnimationFrame(id);
+  }, [offset]);
+
   const color =
-    score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warn)' : 'var(--error)';
+    max === 100
+      ? (score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warn)' : 'var(--error)')
+      : (pct >= 0.7  ? 'var(--success)' : pct >= 0.4  ? 'var(--warn)' : 'var(--error)');
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-3)" strokeWidth="7" />
+      <div className="relative" style={{ width: px, height: px }}>
+        <svg width={px} height={px} viewBox={`0 0 ${px} ${px}`} className="-rotate-90">
+          <circle cx={px / 2} cy={px / 2} r={r} fill="none" stroke="var(--surface-3)" strokeWidth="7" />
           <circle
-            cx={size / 2} cy={size / 2} r={r} fill="none"
+            cx={px / 2} cy={px / 2} r={r} fill="none"
             stroke={color} strokeWidth="7" strokeLinecap="round"
-            strokeDasharray={circ} strokeDashoffset={offset}
+            strokeDasharray={circ} strokeDashoffset={animatedOffset}
             style={{ transition: 'stroke-dashoffset 0.8s var(--ease-spring)' }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-bold tabular-nums" style={{ fontSize: size * 0.26, color }}>{score}</span>
+          <span className="font-bold tabular-nums" style={{ fontSize: px * 0.26, color }}>{score}</span>
         </div>
       </div>
       {label && <span className="text-xs" style={{ color: 'var(--text-3)' }}>{label}</span>}

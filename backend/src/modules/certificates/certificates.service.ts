@@ -340,7 +340,7 @@ export function renderCertificateSvg(content: CertificateContent, certUrl: strin
 
   <!-- score block -->
   <text x="88" y="478" font-size="96" font-weight="800" fill="${ACCENT}" letter-spacing="-2">${score}</text>
-  <text x="${88 + score.length * 56 + 12}" y="478" font-size="28" fill="${TEXT_FAINT}">/10</text>
+  ${content.kind === 'session' ? `<text x="${88 + score.length * 56 + 12}" y="478" font-size="28" fill="${TEXT_FAINT}">/10</text>` : ''}
 
   <!-- issued date -->
   <text x="88" y="538" font-size="14" fill="${TEXT_FAINT}">Issued ${issued}</text>

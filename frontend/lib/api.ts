@@ -146,11 +146,11 @@ export async function apiCall<T = unknown>(
     }
 
     if (!res.ok) {
+      const errPayload = (data as { error?: { code: string; message: string; details?: Record<string, unknown> } | string })?.error;
       return {
         ok: false,
         status: res.status,
-        error: (data as { error?: { code: string; message: string } | string })?.error
-          ?? { code: 'unknown', message: 'Request failed' },
+        error: errPayload ?? { code: 'unknown', message: 'Request failed' },
       };
     }
 
@@ -216,4 +216,48 @@ export function extractErrorMessage(error: ApiErrorShape): string {
 export function withErrorRef(message: string, error: ApiErrorShape): string {
   const ref = getErrorRequestId(error);
   return ref ? `${message} (Error ref: ${ref})` : message;
+}
+
+/**
+ * Typed error that carries the HTTP status from an `apiCall` result.
+ * Thrown by `throwIfError` so React Query's retry logic (and any other
+ * catch site) can inspect `.status` rather than pattern-matching on
+ * the human-readable `.message` string.
+ *
+ * Usage in a queryFn:
+ *   const res = await userApi.me();
+ *   throwIfError(res, 'Failed to fetch user');
+ *   return res.data;
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Throws an `ApiError` (carrying HTTP status + backend code) if `res.ok`
+ * is false. Drop-in replacement for the `if (!res.ok) throw new Error(…)`
+ * pattern used across query functions — lets `providers.tsx` retry logic
+ * inspect `.status` directly instead of guessing from the message string.
+ */
+export function throwIfError<T>(
+  res: { ok: boolean; status?: number; error?: ApiErrorShape },
+  fallbackMessage: string,
+): asserts res is { ok: true } & typeof res {
+  if (!res.ok) {
+    const status  = res.status ?? 0;
+    const errCode = typeof res.error === 'object' && res.error !== null && 'code' in res.error
+      ? (res.error as { code: string }).code
+      : 'unknown';
+    const errMsg  = typeof res.error === 'object' && res.error !== null && 'message' in res.error
+      ? (res.error as { message: string }).message
+      : fallbackMessage;
+    throw new ApiError(errMsg || fallbackMessage, status, errCode);
+  }
 }

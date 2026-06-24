@@ -31,7 +31,11 @@ export interface CreateSessionResponse {
   sessions:        number;
   best_score:      number;
   job_ready_score: number;
-  upsell_trigger?: string;
+  upsell_trigger?: {
+    reason:  'post_session' | 'high_score' | 'streak_milestone';
+    score?:  number;
+    streak?: number;
+  };
 }
 
 /** GET /api/sessions/:id */

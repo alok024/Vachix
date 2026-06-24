@@ -35,6 +35,14 @@ function isCorrectionObject(c: unknown): c is { error: string } {
   return typeof c === 'object' && c !== null && 'error' in c && typeof (c as Record<string, unknown>).error === 'string';
 }
 
+/** Narrows to the shared ErrorCorrection shape `{ wrong: string, correct: string }`. */
+function isErrorCorrectionObject(c: unknown): c is { wrong: string; correct: string } {
+  const o = c as Record<string, unknown>;
+  return typeof c === 'object' && c !== null
+    && typeof o.wrong === 'string'
+    && typeof o.correct === 'string';
+}
+
 // Public types
 export interface MistakeRecord {
   topic:        string;
@@ -82,9 +90,16 @@ export async function persistMistakesFromFeedback(
       const corrections = Array.isArray(f.english_errors)
         ? f.english_errors
         : Array.isArray(f.corrections)
-          ? (f.corrections as unknown[]).map(c =>
-              typeof c === 'string' ? c : (isCorrectionObject(c) ? c.error : '')
-            )
+          ? (f.corrections as unknown[]).map(c => {
+              if (typeof c === 'string')          return c;
+              if (isCorrectionObject(c))           return c.error;
+              // Shared ErrorCorrection shape: { wrong, correct, explanation? }
+              if (isErrorCorrectionObject(c))      return `${c.wrong} → ${c.correct}`;
+              // Unknown shape — log so we can extend the guards rather than
+              // silently dropping valid mistake data from memory.
+              log.warn('ai.memory: unrecognised corrections element shape, skipping', { element: c });
+              return '';
+            })
           : [];
 
       for (const err of corrections) {

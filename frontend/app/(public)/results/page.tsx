@@ -14,18 +14,10 @@ import { Trophy, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { resultsBoardApi } from '@/features/user/api/results-board';
 import type { ResultsBoardEntry } from '@/features/user/types/results-board';
 import { formatDate } from '@/lib/utils';
+import { ScoreRing } from '@/components/ui';
 import Link from 'next/link';
 
 const PAGE_SIZE = 20;
-
-// ── Score colour helper (mirrors existing dashboard ScorePill logic) ──────────
-
-function scoreColor(score: number | null): string {
-  if (score == null) return '#64748b';
-  if (score >= 7)   return '#22c55e';
-  if (score >= 5)   return '#f59e0b';
-  return '#ef4444';
-}
 
 // ── Card ─────────────────────────────────────────────────────────────────────
 
@@ -48,19 +40,13 @@ function BoardCard({ entry }: { entry: ResultsBoardEntry }) {
         </div>
 
         {entry.avg_score != null && (
-          <div
-            className="flex-shrink-0 text-center rounded-xl px-3 py-1.5"
-            style={{ background: `${scoreColor(entry.avg_score)}22` }}
-          >
-            <div
-              className="text-lg font-bold tabular-nums leading-none"
-              style={{ color: scoreColor(entry.avg_score) }}
-            >
-              {entry.avg_score.toFixed(1)}
-            </div>
-            <div className="text-[10px] mt-0.5 font-semibold" style={{ color: 'var(--text-3)' }}>
-              avg score
-            </div>
+          <div className="flex-shrink-0 text-center">
+            <ScoreRing
+              score={Number(entry.avg_score.toFixed(1))}
+              max={10}
+              size="sm"
+              label="avg score"
+            />
           </div>
         )}
       </div>

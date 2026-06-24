@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import { authMiddleware, requireVerified } from '../../core/middleware';
-import { submitJobLanded, getBoard } from './results-board.controller';
+import { submitJobLanded, getBoard, getBoardEntry } from './results-board.controller';
 
 const router = Router();
 
@@ -19,5 +19,8 @@ router.post('/job-landed', authMiddleware, requireVerified, submitJobLanded);
 
 // Read path: intentionally public — social proof page, no login required
 router.get('/results-board', getBoard);
+
+// Per-user lookup: used by the OG image Edge route to avoid a full board scan
+router.get('/results-board-entry/:userId', getBoardEntry);
 
 export default router;

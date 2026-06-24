@@ -148,11 +148,19 @@ export function debitVoiceSeconds(
   seconds: number,
   kind:    'voice' | 'avatar' = 'voice',
 ): void {
+  // Fire-and-forget by design: voice debits are non-fatal and must never
+  // block the HTTP response. Acknowledged trade-off: if the process restarts
+  // in the window between response delivery and the debit landing in Supabase,
+  // the debit is lost. Acceptable for a soft cap (the ledger is not billing-
+  // critical). If ledger accuracy becomes a hard requirement, migrate to a
+  // durable BullMQ job instead.
   const voiceSecs  = kind === 'voice'  ? seconds : 0;
   const avatarSecs = kind === 'avatar' ? seconds : 0;
 
   db.incrementVoiceUsage(userId, voiceSecs, avatarSecs).catch(err =>
-    log.warn('debitVoiceSeconds: failed to debit voice ledger (non-fatal)', {
+    // Error (not warn) — a failed debit means usage is under-counted, which
+    // lets users exceed their voice cap. Page ops so it can be investigated.
+    log.error('debitVoiceSeconds: failed to debit voice ledger', {
       userId, seconds, kind, error: (err as Error).message,
     })
   );

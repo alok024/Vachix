@@ -19,7 +19,13 @@ type VoiceLang = 'en' | 'hi' | 'hinglish';
 // the free-tier warm-up route below. Streams the response straight
 // through to `res` rather than buffering, same as the original /tts
 // handler.
-async function streamElevenLabsSpeech(res: Response, text: string): Promise<void> {
+//
+// Returns true if audio was successfully written to `res`, false if the
+// upstream failed and an error response was written instead. Mirrors the
+// contract of streamSarvamSpeech so callers can use the return value
+// directly rather than inspecting res.writableEnded (which is true for
+// both success and failure and therefore cannot distinguish them).
+async function streamElevenLabsSpeech(res: Response, text: string): Promise<boolean> {
   const elRes = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${env.ELEVENLABS_VOICE_ID}`,
     {
@@ -39,7 +45,7 @@ async function streamElevenLabsSpeech(res: Response, text: string): Promise<void
 
   if (!elRes.ok || !elRes.body) {
     fail(res, 502, 'tts_upstream_failed', 'The text-to-speech service failed to respond.');
-    return;
+    return false;
   }
 
   res.setHeader('Content-Type', 'audio/mpeg');
@@ -52,6 +58,7 @@ async function streamElevenLabsSpeech(res: Response, text: string): Promise<void
     res.write(value);
   }
   res.end();
+  return true;
 }
 
 // Sarvam Bulbul v3 — Hindi/Hinglish voice (Multi-language interview mode).
@@ -148,13 +155,12 @@ async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): P
     const decision = await checkBreaker();
 
     if (decision.state === 'open') {
-      // Breaker is open — Sarvam is known-down; skip straight to ElevenLabs
+      // Breaker is open — Sarvam is known-down; skip straight to ElevenLabs.
+      // streamElevenLabsSpeech now returns a boolean success flag; use it
+      // directly rather than inspecting res.writableEnded, which is true in
+      // both the success and failure cases and cannot distinguish them.
       log.info('Sarvam-primary: breaker open — skipping Sarvam, using ElevenLabs', { lang });
-      await streamElevenLabsSpeech(res, text.slice(0, 2000));
-      // streamElevenLabsSpeech calls fail() on upstream error, which does NOT throw.
-      // We check headersSent: if the response is still open after the call, ElevenLabs
-      // failed and already wrote an error. If it's closed (audio streamed), success.
-      return res.headersSent && !res.writableEnded ? false : res.writableEnded;
+      return streamElevenLabsSpeech(res, text.slice(0, 2000));
     }
 
     const langCode = lang === 'en' ? env.SARVAM_EN_LANG_CODE : 'hi-IN';
@@ -175,8 +181,7 @@ async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): P
     });
     // Re-clip: text was sized for Sarvam's 2500-char limit; ElevenLabs
     // only accepts 2000. A 2500-char input causes a 400/422 upstream.
-    await streamElevenLabsSpeech(res, text.slice(0, 2000));
-    return res.writableEnded;
+    return streamElevenLabsSpeech(res, text.slice(0, 2000));
   }
 
   // Legacy path: ElevenLabs primary for English, Sarvam primary for hi/hinglish
@@ -185,8 +190,7 @@ async function synthesizeSpeech(res: Response, text: string, lang: VoiceLang): P
     if (handled) return true;
     log.info('Falling back to ElevenLabs for non-English TTS request', { lang });
   }
-  await streamElevenLabsSpeech(res, text);
-  return res.writableEnded;
+  return streamElevenLabsSpeech(res, text);
 }
 
 // POST /api/voice/tts

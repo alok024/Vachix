@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://images.unsplash.com https://*.razorpay.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.razorpay.com",
+      "connect-src 'self' https://*.razorpay.com https://app.posthog.com https://eu.posthog.com https://api.simli.com wss://api.simli.com",
       "frame-src https://api.razorpay.com https://checkout.razorpay.com",
       // P7-C (barge-in): vad-web registers an AudioWorklet from a blob: URL.
       // Chrome requires blob: in worker-src for this to succeed.

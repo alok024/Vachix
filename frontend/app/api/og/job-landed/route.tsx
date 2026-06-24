@@ -63,44 +63,43 @@ export async function GET(req: NextRequest) {
     return new Response('Forbidden', { status: 403 });
   }
 
-  // Fetch the board entry for this user from our own backend
-  // (Next.js rewrites proxy /api/* → backend, but from the Edge runtime
-  //  we must hit the backend URL directly because Next.js rewrites only
-  //  apply to browser requests, not server-side fetch).
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-    ?? 'https://vachix-production.up.railway.app';
+  // Fetch the board entry for this user from our own backend.
+  // From the Edge runtime we must hit the backend URL directly because
+  // Next.js rewrites only apply to browser requests, not server-side fetch.
+  // H7: Use NEXT_PUBLIC_BACKEND_URL — no hardcoded prod fallback here.
+  // H6: Hit the per-user endpoint instead of scanning the full board.
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   let displayName = 'A Vachix User';
   let role        = 'New Role';
   let company     = '';
 
-  try {
-    const boardRes = await fetch(
-      `${backendUrl}/api/user/results-board`,
-      { next: { revalidate: 3600 } }          // cache for 1h — cards rarely change
-    );
-    if (boardRes.ok) {
-      const json = (await boardRes.json()) as {
-        data: {
-          entries: Array<{
-            display_name:   string;
-            role:           string;
-            company:        string | null;
-            og_image_url:   string;
-          }>;
+  if (backendUrl) {
+    try {
+      const entryRes = await fetch(
+        `${backendUrl}/api/user/results-board-entry/${encodeURIComponent(uid)}`,
+        { next: { revalidate: 3600 } },   // cache 1h — entry rarely changes
+      );
+      if (entryRes.ok) {
+        const json = (await entryRes.json()) as {
+          data: {
+            entry: {
+              display_name: string;
+              role:         string;
+              company:      string | null;
+            } | null;
+          };
         };
-      };
-      // Match by og_image_url containing this uid (cheapest way to filter
-      // without adding a separate /api/user/board-entry/:userId endpoint)
-      const entry = json.data.entries.find(e => e.og_image_url.includes(uid));
-      if (entry) {
-        displayName = entry.display_name;
-        role        = entry.role;
-        company     = entry.company ?? '';
+        const entry = json.data?.entry;
+        if (entry) {
+          displayName = entry.display_name;
+          role        = entry.role;
+          company     = entry.company ?? '';
+        }
       }
+    } catch {
+      // Non-fatal — fall back to generic card values set above
     }
-  } catch {
-    // Non-fatal — fall back to generic card
   }
 
   const headline = company

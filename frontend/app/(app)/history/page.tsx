@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useSessions } from '@/hooks/queries';
 import { useAuthStore } from '@/store/auth';
 import { useUIStore } from '@/store/ui';
-import { Card, Badge, Button, EmptyState, Spinner, ScoreBadge } from '@/components/ui';
+import { Card, Badge, Button, EmptyState, Spinner, ScoreRing } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import type { Session } from '@/types';
 import { ChevronRight, Lock, History } from 'lucide-react';
 
 export default function HistoryPage() {
@@ -55,7 +56,7 @@ export default function HistoryPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {sessions.map((s: any) => (
+          {sessions.map((s: Session) => (
             <button
               key={s.id}
               onClick={() => router.push(`/interview/summary?session=${s.id}`)}
@@ -71,7 +72,7 @@ export default function HistoryPage() {
               }}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <ScoreBadge score={Math.round(s.score)} size="sm" />
+                <ScoreRing score={Math.round(s.score)} max={10} size="sm" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-1)' }}>{s.profession}</p>
                   <p className="text-xs" style={{ color: 'var(--text-3)' }}>{formatDate(s.created_at)}</p>

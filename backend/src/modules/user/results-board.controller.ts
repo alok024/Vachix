@@ -8,9 +8,9 @@
 
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../core/middleware';
-import { ok, badRequest, tooManyRequests } from '../../core/utils/response';
+import { ok, badRequest } from '../../core/utils/response';
 import { trackEvent } from '../analytics/events.service';
-import { recordJobLanded, getResultsBoard } from './results-board.service';
+import { recordJobLanded, getResultsBoard, getResultsBoardEntryByUserId } from './results-board.service';
 import { db } from '../../core/database/client';
 
 // POST /api/user/job-landed
@@ -62,7 +62,10 @@ export const submitJobLanded = asyncHandler(async (req: Request, res: Response) 
   // blindly trust client-side gating).
   const stats = await db.getStats(userId);
   if (!stats || (stats.sessions ?? 0) < 1) {
-    tooManyRequests(res, 'Complete at least one interview session before submitting', 'no_sessions');
+    // 400, not 429: this is a client precondition failure (no sessions yet),
+    // not a rate-limit. A 429 would trigger retry-with-backoff on any client
+    // applying standard HTTP semantics — looping forever for a zero-session user.
+    badRequest(res, 'Complete at least one interview session before submitting', 'no_sessions');
     return;
   }
 
@@ -97,4 +100,17 @@ export const getBoard = asyncHandler(async (req: Request, res: Response) => {
 
   const board = await getResultsBoard(page, pageSize);
   ok(res, board);
+});
+
+// GET /api/user/results-board-entry/:userId  (public — no auth)
+// Used by the OG image Edge route for a direct indexed lookup instead of
+// scanning the entire board to find one user (H6 fix).
+export const getBoardEntry = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params as { userId: string };
+  if (!userId || typeof userId !== 'string') {
+    ok(res, { entry: null });
+    return;
+  }
+  const entry = await getResultsBoardEntryByUserId(userId);
+  ok(res, { entry });
 });

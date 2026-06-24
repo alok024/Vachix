@@ -35,7 +35,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sora)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans-var)', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         '2xl': '1rem',

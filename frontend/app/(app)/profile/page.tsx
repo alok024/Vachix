@@ -8,6 +8,7 @@ import { useCompleteOnboarding } from '@/features/user/hooks';
 import { useAuthStore } from '@/store/auth';
 import { useUIStore } from '@/store/ui';
 import { Button, Card, CardHeader, CardBody, Badge, ProgressBar, Spinner } from '@/components/ui';
+import type { BadgeVariant } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { LogOut, Crown, Diamond, Zap } from 'lucide-react';
 import { QK } from '@/lib/query-keys';
@@ -115,7 +116,7 @@ function ProfilePageInner() {
   const aiRemaining  = usage?.remaining ?? user?.ai_calls_remaining ?? null;
 
   const planLabel        = user?.plan === 'elite' ? '◈ Elite' : user?.plan === 'pro' ? '✦ Pro' : user?.plan === 'starter' ? '⚡ Starter' : 'Free';
-  const planBadgeVariant = (user?.plan === 'elite' ? 'elite' : user?.plan === 'pro' ? 'pro' : user?.plan === 'starter' ? 'starter' : 'free') as any;
+  const planBadgeVariant: BadgeVariant = user?.plan === 'elite' ? 'elite' : user?.plan === 'pro' ? 'pro' : user?.plan === 'starter' ? 'starter' : 'free';
 
   async function handleLogout() {
     await logout.mutateAsync();

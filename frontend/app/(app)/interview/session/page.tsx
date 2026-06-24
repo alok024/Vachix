@@ -25,7 +25,7 @@ import { useSaveSession } from '@/features/interview/hooks';
 import { aiApi } from '@/features/ai/api';
 import { interviewApi }  from '@/features/interview/api';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { Button, Card, Spinner, ScoreBadge } from '@/components/ui';
+import { Button, Card, Spinner, ScoreRing } from '@/components/ui';
 import { parseJsonArray } from '@/lib/utils';
 import { withErrorRef } from '@/lib/api';
 import { countFillers, estimateWPM } from '@/lib/speech-analysis';
@@ -62,6 +62,50 @@ function parseScoreFromAI(text: string): number {
 // Max chars a user can type in either answer textarea.
 // Matches the backend AIMessageSchema content cap (2,000).
 const MAX_ANSWER_LENGTH = 2_000;
+
+// F33: Animated score badge — counts up from 0 to target over 500ms
+function AnimatedScore({ score, max = 10 }: { score: number; max?: number }) {
+  const [displayed, setDisplayed] = useState(0);
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    setDisplayed(0);
+    setSettled(false);
+    const dur = 500;
+    const startTime = performance.now();
+    function tick(now: number) {
+      const pct = Math.min((now - startTime) / dur, 1);
+      const ease = 1 - Math.pow(1 - pct, 3);
+      setDisplayed(Math.round(ease * score * 10) / 10);
+      if (pct < 1) requestAnimationFrame(tick);
+      else { setDisplayed(score); setSettled(true); }
+    }
+    requestAnimationFrame(tick);
+  }, [score]);
+
+  const tier = score >= 8 ? 'high' : score >= 5 ? 'mid' : 'low';
+  const tierColor = tier === 'high' ? 'var(--success, #22c55e)' : tier === 'mid' ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span
+        className="text-3xl font-bold tabular-nums transition-all duration-300"
+        style={{
+          color: tierColor,
+          transform: settled ? 'scale(1)' : 'scale(0.95)',
+        }}
+      >
+        {displayed}
+      </span>
+      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>/ {max}</span>
+      {settled && tier === 'high' && (
+        <span className="text-[10px] font-semibold" style={{ color: 'var(--success)' }}>Excellent ✓</span>
+      )}
+      {settled && tier === 'low' && (
+        <span className="text-[10px] font-semibold" style={{ color: '#ef4444' }}>Needs work</span>
+      )}
+    </div>
+  );
+}
 
 // Feedback JSON parsing
 // Parse and validate AI feedback output with Zod so malformed
@@ -313,6 +357,8 @@ function InterviewSessionPageInner() {
   const [currentFeedback, setCurrentFeedback] = useState<Partial<Feedback> | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  // F30: Immersive session mode
+  const [immersive, setImmersive] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [liveChips, setLiveChips] = useState<LiveFeedbackChip[]>([]);
   const [hintText, setHintText] = useState<string | null>(null);
@@ -322,9 +368,23 @@ function InterviewSessionPageInner() {
   // user knows their speech was detected (avoids the confusing "avatar stopped
   // talking but nothing happened" experience when STT is not yet wired).
   const [isListening, setIsListening] = useState(false);
+  // F34: Word count quality bar
+  const wcWords = answer.trim() === '' ? 0 : answer.trim().split(/\s+/).filter(Boolean).length;
+  const wcColor: 'red' | 'amber' | 'green' = wcWords >= 40 ? 'green' : wcWords >= 20 ? 'amber' : 'red';
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initRef = useRef(false);
+  // Always-current refs for the timer-expiry effect.
+  // The timer effect has [timerRemaining, phase] as deps, so it re-registers
+  // every second — but answer and submitAnswer can theoretically advance
+  // between the last dep-change render and the zero-tick render. Refs ensure
+  // the effect always reads the live value rather than whatever was captured
+  // in the last closure.
+  const answerRef         = useRef(answer);
+  answerRef.current       = answer;          // sync on every render
+  // submitAnswerRef is populated after submitAnswer is defined (below).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const submitAnswerRef   = useRef<() => Promise<void>>(null as any);
 
   // ── Bug #1 fix: Avatar + Barge-In (P7-B / P7-C) ──────────────────────────
   // avatarContainerRef  → <div> that Simli streams video into
@@ -554,7 +614,11 @@ function InterviewSessionPageInner() {
       // if the answer box is empty at expiry, record a zero-score
       // skipped-question entry and call nextQuestion() to advance normally.
       // If a partial answer was typed, submit it for AI feedback as before.
-      if (!answer.trim()) {
+      //
+      // answerRef and submitAnswerRef are kept in sync on every render so
+      // this effect always sees the live values even when it re-registers
+      // due to timerRemaining ticking rather than answer changing.
+      if (!answerRef.current.trim()) {
         const { session } = useInterviewStore.getState();
         const skippedFeedback: import('@/types').Feedback = {
           id: crypto.randomUUID(),
@@ -569,10 +633,9 @@ function InterviewSessionPageInner() {
         showToast('⏱ Time\'s up! Moving to next question…');
         nextQuestion();
       } else {
-        submitAnswer();
+        submitAnswerRef.current();
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.session.timerRemaining, phase]);
 
   // Cleanup on unmount
@@ -657,6 +720,9 @@ function InterviewSessionPageInner() {
     setHintText(null);
     setPhase('feedback');
   }
+  // Keep ref in sync so the timer effect always dispatches to the latest closure
+  // (submitAnswer re-closes over the current `answer` state on every render).
+  submitAnswerRef.current = submitAnswer;
 
   // Classic: next question or finish
   function nextQuestion() {
@@ -834,16 +900,15 @@ function InterviewSessionPageInner() {
       ? Math.round((Date.now() - session.sessionStartTime) / 1000)
       : 0;
 
-    // Bug 1 fix: actually call the mutation
-    // P1-A: saveSession throws (via mutateAsync) when the backend returns 429
-    // session_limit_reached. Catch it here, show the upgrade modal with the
-    // reset date from the error details, and route to summary anyway so the
-    // user can still see their in-memory feedback.
+
+    // P1-A: saveSession.mutateAsync calls apiCall(), which NEVER throws —
+    // it always resolves to ApiResult<T>. The old try/catch was unreachable,
+    // so session_limit_reached (429) silently fell through to a generic toast
+    // and the upgrade modal never fired.
+    // Correct pattern: inspect result.ok and result.error directly.
     const { showUpgradeModal } = useUIStore.getState();
 
-    let result: Awaited<ReturnType<typeof saveSession.mutateAsync>>;
-    try {
-      result = await saveSession.mutateAsync({
+    const result = await saveSession.mutateAsync({
       client_session_id: (() => {
         // startSession() always sets clientSessionId — a null here would mean
         // the store was reset between session start and finish, which defeats
@@ -866,13 +931,15 @@ function InterviewSessionPageInner() {
       hindi_mode: config.lang !== 'en',
       feedbacks,
     });
-    } catch (saveErr: unknown) {
+
+    if (!result.ok) {
       // P1-A: monthly session cap reached — show upgrade modal with reset date,
       // then route to in-memory summary so the user doesn't lose their feedback.
-      const errBody = (saveErr as { response?: { data?: { error?: { code?: string; message?: string; details?: { resets_at?: string } } } } })?.response?.data?.error;
-      if (errBody?.code === 'session_limit_reached') {
-        const resetsAt = errBody.details?.resets_at
-          ? new Date(errBody.details.resets_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
+      const errObj = typeof result.error === 'string' ? null : result.error;
+      if (errObj?.code === 'session_limit_reached') {
+        const rawResetsAt = (errObj.details as { resets_at?: string } | undefined)?.resets_at;
+        const resetsAt = rawResetsAt
+          ? new Date(rawResetsAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
           : 'next month';
         showToast(`🔒 Monthly session limit reached — resets ${resetsAt}`);
         showUpgradeModal('limit_hit');
@@ -884,6 +951,7 @@ function InterviewSessionPageInner() {
       router.push('/interview/summary');
       return;
     }
+
 
     const exchanges = config.mode === 'chat' ? session.chatExchanges : feedbacks.length;
     const sessionId = session.clientSessionId ?? 'unknown';
@@ -1090,6 +1158,19 @@ function InterviewSessionPageInner() {
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-5">
 
+      {/* F31 fix: Keyframes hoisted out of conditional branches so they are
+          always available — both immersive and non-immersive modes reference them. */}
+      <style>{`
+        @keyframes at31OrbPulse {
+          0%,100%{ opacity:.04; transform:scale(.9); }
+          50%     { opacity:.09; transform:scale(1.1); }
+        }
+        @keyframes at31DotPulse {
+          0%,80%,100%{ transform:scale(.8); opacity:.4; }
+          40%        { transform:scale(1.1); opacity:1; }
+        }
+      `}</style>
+
       {/* ── Bug #1 fix: Avatar container (P7-B) ──────────────────────────────
            Rendered in both modes so the ref is always attached. Hidden in
            voice-only mode (avatarMode === 'voice-only' or Simli init failed).
@@ -1135,7 +1216,93 @@ function InterviewSessionPageInner() {
         </div>
       )}
 
-      {/* Progress */}
+      {/* F30: Immersive mode — minimal progress bar when active */}
+      {immersive ? (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex flex-col"
+          style={{ background: 'var(--surface)', minHeight: '100dvh' }}
+        >
+          {/* Thin progress bar at very top */}
+          <div className="h-[3px] w-full" style={{ background: 'var(--surface-2)' }}>
+            <div
+              className="h-full bg-[var(--accent)] transition-[width] duration-500"
+              style={{ width: `${(qNum / totalQ) * 100}%` }}
+            />
+          </div>
+          {/* Exit button */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-xs" style={{ color: 'var(--text-3)' }}>Q{qNum} / {totalQ}</span>
+            <button
+              onClick={() => setImmersive(false)}
+              className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+            >
+              ✕ Exit immersive
+            </button>
+          </div>
+          {/* Question dominates */}
+          <div className="flex-1 flex flex-col px-5 pt-4 pb-6 gap-5 overflow-y-auto">
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background: 'var(--surface-2)',
+                border: '1.5px solid var(--border2)',
+                boxShadow: phase === 'loading_feedback' ? '0 0 0 2px var(--accent-border)' : 'none',
+                transition: 'box-shadow .4s',
+              }}
+            >
+              <div className="text-xs mb-3 uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                {store.config.profession} · {store.config.interviewType}
+              </div>
+              <p className="text-xl font-semibold text-white leading-relaxed">{classicQ}</p>
+            </div>
+            {/* Answer section in immersive */}
+            {phase === 'answering' && (
+              <div className="space-y-3">
+                <textarea
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value.slice(0, MAX_ANSWER_LENGTH))}
+                  placeholder="Type your answer…"
+                  rows={8}
+                  maxLength={MAX_ANSWER_LENGTH}
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-white placeholder:text-[#555A6A] text-sm resize-none focus:outline-none focus:border-[var(--accent-border)] transition-colors"
+                />
+                {/* F34 in immersive */}
+                <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,.06)' }}>
+                  <div className="h-full rounded-full transition-all duration-200"
+                    style={{
+                      width: `${Math.min(wcWords / 50 * 100, 100)}%`,
+                      background: wcColor === 'green' ? '#22c55e' : wcColor === 'amber' ? '#f59e0b' : '#ef4444',
+                    }} />
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="secondary" size="sm" onClick={() => finishSession()}>End Session</Button>
+                  <Button className="flex-1" onClick={submitAnswer} disabled={!answer.trim() || wcWords < 15}>
+                    Submit Answer →
+                  </Button>
+                </div>
+              </div>
+            )}
+            {phase === 'loading_feedback' && (
+              <div className="flex flex-col items-center py-8 gap-3">
+                <div className="flex gap-1.5">
+                  {[0,1,2].map(i => (
+                    <span key={i} className="w-2.5 h-2.5 rounded-full" style={{
+                      background:'var(--accent)',
+                      animation:`at31DotPulse 1.2s ease-in-out ${i*.2}s infinite`,
+                    }}/>
+                  ))}
+                </div>
+                <p className="text-sm" style={{ color:'var(--text-3)' }}>Aria is thinking…</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Progress (normal mode) */}
+      {!immersive && (
       <div className="flex items-center gap-3">
         <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
           <div
@@ -1147,28 +1314,69 @@ function InterviewSessionPageInner() {
           Q{qNum} / {totalQ}
         </span>
       </div>
+      )}
 
-      {/* Question card */}
-      <Card className="p-6">
-        <div className="text-xs text-[#555A6A] mb-3 uppercase tracking-widest">
-          {store.config.profession} · {store.config.interviewType}
-        </div>
-        <p className="text-lg font-semibold text-white leading-relaxed">{classicQ}</p>
-      </Card>
+      {/* Question card (normal mode) */}
+      {!immersive && (
+        <Card className="p-6">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="text-xs text-[#555A6A] uppercase tracking-widest">
+              {store.config.profession} · {store.config.interviewType}
+            </div>
+            {phase === 'answering' && (
+              <button
+                onClick={() => setImmersive(true)}
+                className="text-[10px] px-2 py-1 rounded-md border flex-shrink-0 transition-colors"
+                style={{ borderColor:'var(--border)', color:'var(--text-3)' }}
+                title="Enter full-screen immersive mode"
+              >
+                ⛶ Immersive
+              </button>
+            )}
+          </div>
+          <p className="text-lg font-semibold text-white leading-relaxed">{classicQ}</p>
+        </Card>
+      )}
 
-      {/* Answer phase */}
-      {(phase === 'answering') && (
+      {/* Answer phase (normal mode) */}
+      {!immersive && (phase === 'answering') && (
         <div className="space-y-3">
-          <textarea
-            ref={textareaRef}
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value.slice(0, MAX_ANSWER_LENGTH))}
-            placeholder="Type your answer here…"
-            rows={6}
-            maxLength={MAX_ANSWER_LENGTH}
-            autoFocus
-            className="w-full px-4 py-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-white placeholder:text-[#555A6A] text-sm resize-none focus:outline-none focus:border-[var(--accent-border)] transition-colors"
-          />
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value.slice(0, MAX_ANSWER_LENGTH))}
+              placeholder="Type your answer here…"
+              rows={6}
+              maxLength={MAX_ANSWER_LENGTH}
+              autoFocus
+              className="w-full px-4 py-3 rounded-xl bg-[var(--surface-2)] border text-white placeholder:text-[#555A6A] text-sm resize-none focus:outline-none transition-colors"
+              style={{ borderColor: wcColor === 'green' ? 'var(--success-border, #22c55e)' : wcColor === 'amber' ? '#f59e0b' : 'var(--border)' }}
+            />
+            {/* F34: Word count + quality bar */}
+            <div className="mt-1.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px]" style={{
+                  color: wcColor === 'green' ? 'var(--success)' : wcColor === 'amber' ? '#f59e0b' : 'var(--text-3)'
+                }}>
+                  {wcWords} / 50 words
+                  {wcWords < 15 && wcWords > 0 && ' — too short'}
+                  {wcWords >= 15 && wcWords < 40 && ' — good, keep going'}
+                  {wcWords >= 40 && ' — great length ✓'}
+                </span>
+                <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{answer.length}/{MAX_ANSWER_LENGTH}</span>
+              </div>
+              <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface-3, rgba(255,255,255,.08))' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${Math.min(wcWords / 50 * 100, 100)}%`,
+                    background: wcColor === 'green' ? 'var(--success, #22c55e)' : wcColor === 'amber' ? '#f59e0b' : '#ef4444',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Live feedback chips */}
           {liveChips.length > 0 && (
@@ -1230,7 +1438,8 @@ function InterviewSessionPageInner() {
             <Button
               className="flex-1"
               onClick={submitAnswer}
-              disabled={!answer.trim()}
+              disabled={!answer.trim() || wcWords < 15}
+              title={wcWords < 15 ? `Add ${15 - wcWords} more word${15 - wcWords === 1 ? '' : 's'} to submit` : undefined}
             >
               Submit Answer →
             </Button>
@@ -1239,20 +1448,37 @@ function InterviewSessionPageInner() {
       )}
 
       {/* Loading feedback */}
-      {phase === 'loading_feedback' && (
-        <div className="flex flex-col items-center py-8 gap-3">
-          <Spinner className="w-8 h-8 " />
-          <p className="text-[#8B90A0] text-sm">Analysing your answer…</p>
+      {!immersive && phase === 'loading_feedback' && (
+        <div className="flex flex-col items-center py-8 gap-3 at31-thinking-state">
+          {/* F31: AI thinking state — orb + pulsing dots */}
+          <div className="relative flex items-center justify-center w-14 h-14">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, rgba(99,102,241,.09) 0%, transparent 70%)',
+                animation: 'at31OrbPulse 2s ease-in-out infinite',
+              }}
+            />
+            <div className="flex gap-1.5 items-center">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="w-2 h-2 rounded-full" style={{
+                  background: 'var(--accent)',
+                  animation: `at31DotPulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                }} />
+              ))}
+            </div>
+          </div>
+          <p className="text-[#8B90A0] text-sm">Aria is thinking…</p>
         </div>
       )}
 
-      {/* Feedback phase */}
-      {phase === 'feedback' && currentFeedback && (
+      {/* Feedback phase (normal mode — immersive shows inline above) */}
+      {!immersive && phase === 'feedback' && currentFeedback && (
         <div className="space-y-4">
-          {/* Score */}
+          {/* F33: Score roll-up */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-white">Your Score</span>
-            <ScoreBadge score={currentFeedback.score ?? 0} />
+            <AnimatedScore score={currentFeedback.score ?? 0} />
           </div>
 
           {/* Tips */}
@@ -1263,18 +1489,57 @@ function InterviewSessionPageInner() {
             </Card>
           )}
 
-          {/* Corrections */}
+          {/* F32: Correction reveal stagger */}
           {(currentFeedback.corrections?.length ?? 0) > 0 && (
             <Card className="p-4 space-y-2">
               <div className="text-xs text-[#555A6A] uppercase tracking-widest mb-2">English Corrections</div>
               {currentFeedback.corrections!.map((c, i) => (
-                <div key={i} className="text-xs bg-[var(--surface)] rounded-lg px-3 py-2">
-                  <span className="text-red-400 line-through">{c.wrong ?? c.mistake}</span>
+                <div
+                  key={i}
+                  className="text-xs bg-[var(--surface)] rounded-lg px-3 py-2 cr32-row"
+                  style={{
+                    opacity: 0,
+                    transform: 'translateX(-12px)',
+                    animation: `cr32SlideIn 0.35s cubic-bezier(.22,.68,0,1.2) ${i * 120 + 80}ms both`,
+                  }}
+                >
+                  <span
+                    className="cr32-wrong"
+                    style={{
+                      color: '#f87171',
+                      textDecoration: 'line-through',
+                      animation: `cr32Strike 0.3s ease ${i * 120 + 440}ms both`,
+                    }}
+                  >
+                    {c.wrong ?? c.mistake}
+                  </span>
                   <span className="text-[#555A6A] mx-2">→</span>
-                  <span className="text-emerald-400">{c.correct ?? c.correction}</span>
+                  <span
+                    className="text-emerald-400"
+                    style={{
+                      opacity: 0,
+                      animation: `cr32FadeIn 0.3s ease ${i * 120 + 700}ms both`,
+                    }}
+                  >
+                    {c.correct ?? c.correction}
+                  </span>
                   {c.rule && <div className="text-[#555A6A] mt-0.5">{c.rule}</div>}
                 </div>
               ))}
+              <style>{`
+                @keyframes cr32SlideIn {
+                  from { opacity:0; transform:translateX(-12px); }
+                  to   { opacity:1; transform:translateX(0); }
+                }
+                @keyframes cr32Strike {
+                  from { text-decoration-color: transparent; }
+                  to   { text-decoration-color: #f87171; }
+                }
+                @keyframes cr32FadeIn {
+                  from { opacity:0; transform:translateX(6px); }
+                  to   { opacity:1; transform:translateX(0); }
+                }
+              `}</style>
             </Card>
           )}
 

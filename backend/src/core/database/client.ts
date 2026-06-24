@@ -1093,7 +1093,7 @@ export const db = {
     return {
       uses:        events.length,
       rewarded:    events.filter(e => e.rewarded_at != null).length,
-      bonus_calls: (user as unknown as Record<string, number>)?.referral_bonus ?? 0,
+      bonus_calls: user?.referral_bonus ?? 0,
     };
   },
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from '@/features/interview/hooks';
 import { interviewApi } from '@/features/interview/api';
 import { certificatesApi } from '@/features/certificates/api';
@@ -9,7 +9,7 @@ import { comparisonApi }   from '@/features/comparison/api';
 import { useInterviewStore } from '@/store/interview';
 import { useUIStore } from '@/store/ui';
 import { useAuthStore } from '@/store/auth';
-import { Button, Card, CardHeader, CardBody, ScoreBadge, Spinner, ScoreRing } from '@/components/ui';
+import { Button, Card, CardHeader, CardBody, Spinner, ScoreRing } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { CheckCircle, Share2, Download, MessageSquareQuote, Award, Users } from 'lucide-react';
 
@@ -45,6 +45,18 @@ function InterviewSummaryPageInner() {
   const [compareLoading, setCompareLoading] = useState<number | null>(null);
 
   const avgScore    = sessionData?.score ?? (feedbacks.length ? Math.round(feedbacks.reduce((a, f) => a + f.score, 0) / feedbacks.length * 10) / 10 : 0);
+
+  // F35 fix: Animate the score ring by starting at full circumference (empty)
+  // and transitioning to the target offset after mount so the CSS transition fires.
+  const ringCircumference = 2 * Math.PI * 42;
+  const ringTargetOffset  = ringCircumference * (1 - Math.min(avgScore / 10, 1));
+  const [ringOffset, setRingOffset] = useState(ringCircumference); // start: ring empty
+  useEffect(() => {
+    // A tiny delay ensures the browser has painted the start state first.
+    const id = setTimeout(() => setRingOffset(ringTargetOffset), 50);
+    return () => clearTimeout(id);
+  }, [ringTargetOffset]);
+
   const totalErrors = feedbacks.reduce((a, f) => a + (f.corrections?.length ?? 0), 0);
   const totalQ      = feedbacks.length || (sessionData?.exchanges ?? 0);
   const jobReadyScore = sessionData?.job_ready_score;
@@ -143,13 +155,73 @@ function InterviewSummaryPageInner() {
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-5">
 
-      {/* Header */}
-      <div className="text-center py-4">
+      {/* F35: Header with score ring reveal + confetti burst on high score */}
+      <div className="text-center py-4 relative overflow-visible">
         <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ background: 'var(--success-dim)', border: '2px solid var(--success-border)' }}
+          id="cf35Container"
+          className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center"
         >
-          <CheckCircle className="w-8 h-8" style={{ color: 'var(--success)' }} />
+          {/* SVG score ring */}
+          <svg width="96" height="96" className="absolute inset-0" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="48" cy="48" r="42" fill="none" stroke="var(--surface-2)" strokeWidth="5" />
+            <circle
+              cx="48" cy="48" r="42" fill="none"
+              stroke={avgScore >= 8 ? 'var(--success, #22c55e)' : avgScore >= 5 ? '#f59e0b' : '#ef4444'}
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={String(ringCircumference)}
+              strokeDashoffset={String(ringOffset)}
+              style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.22,.68,0,1.2) .2s' }}
+            />
+            {/* Glow layer */}
+            <circle
+              cx="48" cy="48" r="42" fill="none"
+              stroke={avgScore >= 8 ? '#4ade80' : avgScore >= 5 ? '#fbbf24' : '#f87171'}
+              strokeWidth="2" strokeLinecap="round"
+              strokeDasharray={String(ringCircumference)}
+              strokeDashoffset={String(ringOffset)}
+              style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.22,.68,0,1.2) .2s', opacity: .4, filter: 'blur(2px)' }}
+            />
+          </svg>
+          <div className="relative z-10 flex flex-col items-center">
+            <span
+              className="text-2xl font-bold tabular-nums"
+              style={{ color: avgScore >= 8 ? 'var(--success, #22c55e)' : avgScore >= 5 ? '#f59e0b' : '#ef4444' }}
+            >
+              {avgScore}
+            </span>
+            <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>/10</span>
+          </div>
+          {/* F35: Confetti particles (rendered by CSS animation, shown for high scores) */}
+          {avgScore >= 8 && (
+            <div aria-hidden className="absolute inset-0 pointer-events-none overflow-visible">
+              {['#60a5fa','#4ade80','#fbbf24','#f472b6','#a78bfa','#f87171','#34d399','#fb923c','#22d3ee','#e879f9','#fff'].map((color, i) => {
+                const angle = (i / 11) * Math.PI * 2;
+                const radius = 60 + (i % 3) * 20;
+                const dx = Math.round(Math.cos(angle) * radius);
+                const dy = Math.round(Math.sin(angle) * radius - 20);
+                return (
+                  <span key={i} style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    width: i % 3 === 0 ? '8px' : '6px',
+                    height: i % 3 === 0 ? '8px' : '6px',
+                    borderRadius: i % 3 === 0 ? '50%' : '2px',
+                    background: color,
+                    transform: 'translate(-50%, -50%)',
+                    animation: `cf35Fire .8s cubic-bezier(.22,.68,0,1.2) ${i * 40 + 800}ms both`,
+                    '--cf35-dx': dx + 'px',
+                    '--cf35-dy': dy + 'px',
+                  } as React.CSSProperties} />
+                );
+              })}
+              <style>{`
+                @keyframes cf35Fire {
+                  from { opacity:1; transform:translate(-50%,-50%) translate(0,0) rotate(0); }
+                  to   { opacity:0; transform:translate(-50%,-50%) translate(var(--cf35-dx),var(--cf35-dy)) rotate(360deg); }
+                }
+              `}</style>
+            </div>
+          )}
         </div>
         <h2 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Interview Complete!</h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>
@@ -244,18 +316,24 @@ function InterviewSummaryPageInner() {
         </CardBody>
       </Card>
 
-      {/* Per-question feedback */}
+      {/* F36: Per-question feedback with staggered scroll reveal */}
       {feedbacks.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>Your Answers</h3>
           {feedbacks.map((fb, i) => (
-            <Card key={(fb as any).id ?? i} className="p-5 space-y-3">
+            <div
+              key={fb.id ?? i}
+              style={{
+                animation: `fs36SlideUp .5s cubic-bezier(.22,.68,0,1.2) ${i * 100}ms both`,
+              }}
+            >
+            <Card className="p-5 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs mb-1" style={{ color: 'var(--text-3)' }}>Q{i + 1}</div>
                   <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{fb.question}</p>
                 </div>
-                <ScoreBadge score={Math.round(fb.score)} />
+                <ScoreRing score={Math.round(fb.score)} max={10} size="md" />
               </div>
 
               {fb.tips && (
@@ -278,6 +356,47 @@ function InterviewSummaryPageInner() {
                 </div>
               )}
 
+              {/* F38: Elara insight callout — shown when recurring pattern detected */}
+              {fb.corrections && fb.corrections.length >= 2 && i === feedbacks.length - 1 && (() => {
+                // Show insight after the last question if we see 2+ corrections in it
+                const totalCorrCount = feedbacks.reduce((a, f) => a + (f.corrections?.length ?? 0), 0);
+                if (totalCorrCount < 3) return null;
+                return (
+                  <div
+                    className="rounded-xl p-4 flex items-start gap-3 border"
+                    style={{
+                      background: 'var(--blue-dim)',
+                      borderColor: 'var(--blue-border)',
+                      animation: 'ei38SlideIn .5s cubic-bezier(.22,.68,0,1.2) .6s both',
+                      opacity: 0,
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
+                      style={{ background: 'var(--surface)' }}
+                    >
+                      💡
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--accent)' }}>
+                        Aria Noticed
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-1)' }}>
+                        You had <strong>{totalCorrCount} language corrections</strong> across this session.
+                        The most common pattern: small article or tense errors.
+                        Slowing down by 10% during answers usually fixes these automatically — silence reads as composure.
+                      </p>
+                    </div>
+                    <style>{`
+                      @keyframes ei38SlideIn {
+                        from { opacity:0; transform:translateY(12px); }
+                        to   { opacity:1; transform:translateY(0); }
+                      }
+                    `}</style>
+                  </div>
+                );
+              })()}
+
               {/* Challenge a friend on this specific question */}
               {sessionId && (
                 <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
@@ -293,18 +412,41 @@ function InterviewSummaryPageInner() {
                 </div>
               )}
             </Card>
+            </div>
           ))}
+          <style>{`
+            @keyframes fs36SlideUp {
+              from { opacity:0; transform:translateY(24px); }
+              to   { opacity:1; transform:translateY(0); }
+            }
+          `}</style>
         </div>
       )}
 
-      {/* CTA */}
-      <div className="flex gap-3 pb-4">
-        <Button variant="secondary" className="flex-1" onClick={() => router.push('/dashboard')}>
-          Dashboard
+      {/* F37: Action button hierarchy — Practice Again is primary CTA */}
+      <div className="flex flex-col gap-3 pb-4">
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={() => router.push('/interview/setup')}
+          style={{
+            background: 'var(--accent)',
+            boxShadow: '0 4px 20px rgba(99,102,241,.35)',
+            fontSize: '1rem',
+            fontWeight: 700,
+            letterSpacing: '.01em',
+          }}
+        >
+          🎙 Practice Again →
         </Button>
-        <Button className="flex-1" onClick={() => router.push('/interview/setup')}>
-          Practice Again →
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => router.push('/dashboard')}>
+            Dashboard
+          </Button>
+          <Button variant="secondary" className="flex-1" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank')}>
+            📱 Share Score
+          </Button>
+        </div>
       </div>
 
     </div>

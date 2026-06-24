@@ -24,7 +24,7 @@ export interface MeResponse {
 
 export interface SessionDefaults {
   profession:     string;
-  difficulty:     'beginner' | 'intermediate' | 'advanced';
+  difficulty:     'beginner' | 'intermediate' | 'expert';
   interview_type: string;
 }
 

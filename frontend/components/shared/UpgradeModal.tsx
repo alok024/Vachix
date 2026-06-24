@@ -60,19 +60,25 @@ export function UpgradeModal() {
 
   // Fire once each time the modal opens — captures trigger reason and current plan.
   // Runs after render so upgradeModalOpen is guaranteed true when it executes.
+  // upgradeTrigger is included in deps: if the modal somehow reopens with a
+  // different trigger without upgradeModalOpen toggling, we still fire with
+  // the correct (non-stale) trigger value.
   useEffect(() => {
     if (!upgradeModalOpen) return;
     analytics.upgradeModalOpened({
       trigger: upgradeTrigger,
       plan:    user?.plan ?? null,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upgradeModalOpen]);
+  }, [upgradeModalOpen, upgradeTrigger]);
 
   if (!upgradeModalOpen) return null;
 
-  const calls      = meData?.usage?.ai_calls ?? user?.ai_calls ?? 0;
-  const FREE_LIMIT = meData?.usage?.limit ?? user?.ai_calls_limit ?? null;
+  // Use the monthly session counter (session_count / session_limit), not the
+  // AI-messages counter (ai_calls / limit). A single session generates several
+  // AI calls, so ai_calls can easily exceed session_limit, making it look like
+  // an overflow bug (e.g. "14 of 7 sessions used" for 2 actual sessions).
+  const calls      = meData?.usage?.session_count ?? 0;
+  const FREE_LIMIT = meData?.usage?.session_limit ?? null;
 
   async function handleUpgrade(plan: 'starter' | 'pro' | 'elite') {
     setError('');

@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api';
 import { useAuthStore } from '@/store/auth';
 import { QK } from '@/lib/query-keys';
+import { throwIfError } from '@/lib/api';
 
 // /me — user + usage + stats + weak areas
 // Gated on cached `user` (persisted from a previous session). This is a
@@ -25,8 +26,14 @@ export function useMe() {
     queryKey: QK.me,
     queryFn: async () => {
       const res = await userApi.me();
-      if (!res.ok) throw new Error('Failed to fetch user');
-      // Keep Zustand in sync
+      // throwIfError throws an ApiError carrying res.status — providers.tsx
+      // retry logic inspects .status so 401/403 are not retried.
+      throwIfError(res, 'Failed to fetch user');
+      // Keep Zustand in sync — only the fields that components read from the
+      // auth store directly (ProtectedRoute, nav, admin gates). Usage fields
+      // accessed by the UI (session_count, session_limit, remaining, resets_at)
+      // are read from the RQ cache (useMe().data.usage), not from the store,
+      // so they don't need to be spread here.
       if (res.data.user) setUser({
           ...res.data.user,
           ai_calls: res.data.usage?.ai_calls,

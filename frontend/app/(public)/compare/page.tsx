@@ -27,19 +27,39 @@ import type {
 // ── helpers ───────────────────────────────────────────────────────────────
 
 function ScorePill({ score, label }: { score: number; label: string }) {
+  // Feature 44 — ring grammar, matching the rest of the app. Thresholds
+  // simplified from this page's previous 3-cutoff scheme (8/6/4) to the
+  // app-wide 0-10 convention (7/4) used everywhere else, so a score of
+  // e.g. 6.5 now reads the same "good" colour here as it would on the
+  // dashboard or summary page. Colours stay as this page's own hex
+  // palette (not CSS vars) — this standalone public share page is
+  // styled independently of the app's light/dark theme by design.
   const colour =
-    score >= 8 ? '#22c55e'
-    : score >= 6 ? '#4F8EF7'
+    score >= 7 ? '#22c55e'
     : score >= 4 ? '#f59e0b'
     : '#ef4444';
 
+  const size = 64;
+  const r = (size / 2) - 6;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, score / 10));
+  const offset = circ - pct * circ;
+
   return (
     <div className="flex flex-col items-center gap-1">
-      <div
-        className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold"
-        style={{ background: `${colour}22`, border: `2px solid ${colour}`, color: colour }}
-      >
-        {score.toFixed(1)}
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle
+            cx={size / 2} cy={size / 2} r={r} fill="none"
+            stroke={colour} strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={circ} strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1)' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-lg font-bold" style={{ color: colour }}>
+          {score.toFixed(1)}
+        </div>
       </div>
       <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{label}</span>
     </div>
@@ -90,7 +110,8 @@ function ComparePageInner() {
   const [result,      setResult]      = useState<ChallengeSubmitResponse | null>(null);
 
   // share / copy state
-  const [copied, setCopied] = useState(false);
+  const [copied,     setCopied]     = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -144,8 +165,14 @@ function ComparePageInner() {
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+    }).catch(() => {
+      // Clipboard API blocked (permissions denied, non-HTTPS, etc.) —
+      // surface a brief error label on the button instead of silently failing.
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 3000);
+    });
   }, []);
 
   // ── loading / error states ──────────────────────────────────────────────
@@ -304,7 +331,7 @@ function ComparePageInner() {
                 onClick={handleCopy}
                 className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.08] transition-colors"
               >
-                {copied ? 'Copied ✓' : 'Share this challenge'}
+                {copied ? 'Copied ✓' : copyFailed ? 'Copy failed — try manually' : 'Share this challenge'}
               </button>
             </div>
           </div>

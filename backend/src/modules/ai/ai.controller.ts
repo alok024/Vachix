@@ -234,7 +234,6 @@ export const handleAIStream = asyncHandler(async (req: Request, res: Response) =
   const sendEvent = (event: string, data: unknown) => {
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
-    // @ts-expect-error - flush exists on Node http response when compression isn't used
     res.flush?.();
   };
 
