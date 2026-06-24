@@ -33,7 +33,7 @@ const FAQS = [
 
 const TRACKS = ['UPSC / IAS', 'Bank PO', 'SSC CGL', 'Campus Placement', 'IBPS PO', 'Software Engineer', 'Data Science', 'Railway RRB', 'Defence NDA', 'Product Manager', 'Teaching', 'Healthcare'];
 
-const TESTIMONIALS = [
+const TESTIMONIALS: { quote: string; name: string; meta: string; avatar: string; color: string; result?: string }[] = [
   { quote: "Elara caught 'myself is Rahul' on my very first session. I had been saying it for years. Got my SBI PO interview call three weeks later.", name: 'Priya Sharma', meta: 'SBI PO 2024 Qualified', avatar: 'P', color: '#9b7fff' },
   { quote: "The UPSC mock questions are eerily accurate. And the fluency score actually moved — I went from 6.2 to 8.1 in six weeks.", name: 'Rahul Verma', meta: 'UPSC Mains 2024', avatar: 'R', color: '#e2c97e' },
   { quote: "Our entire placement batch used Vachix for 30 days. Average interview confidence score jumped 28%. Placement rate went up.", name: 'Dr. Kavita Nair', meta: 'TPO, Tier 2 Engineering College', avatar: 'K', color: '#4dd9ac' },
