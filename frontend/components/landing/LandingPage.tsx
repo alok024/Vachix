@@ -1340,7 +1340,12 @@ export default function LandingPage() {
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
             <a href="#faq">FAQ</a>
-            <a href="mailto:hello@vachix.in">hello@vachix.in</a>
+            <a
+              href="mailto:support@vachix.in?subject=Bug%20Report&body=Page%3A%20%0AWhat%20happened%3A%20%0ASteps%20to%20reproduce%3A%20"
+            >
+              Report a bug
+            </a>
+            <a href="mailto:support@vachix.in">support@vachix.in</a>
           </div>
           <span className="ssi-foot-cr">© {new Date().getFullYear()} Vachix</span>
         </div>

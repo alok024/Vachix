@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { useUIStore } from '@/store/ui';
 import { Button, Card, CardHeader, CardBody, Badge, ProgressBar, Spinner } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatDateShort } from '@/lib/utils';
 import { LogOut, Crown, Diamond, Zap } from 'lucide-react';
 import { QK } from '@/lib/query-keys';
 
@@ -256,6 +256,61 @@ function ProfilePageInner() {
                 </li>
               ))}
           </ul>
+        </Card>
+      )}
+
+      {/* Billing — renewal date + cancel instructions for paid users */}
+      {!isFree && meData?.subscription && (
+        <Card className="p-5">
+          <div className="text-sm font-semibold mb-3" style={{ color: 'var(--text-1)' }}>
+            Billing
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-3)' }}>Plan</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 500, textTransform: 'capitalize' }}>
+                {meData.subscription.plan}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-3)' }}>Renews on</span>
+              <span style={{ color: 'var(--text-1)' }}>
+                {formatDate(meData.subscription.expires_at)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-3)' }}>Billed</span>
+              <span style={{ color: 'var(--text-2)' }}>Monthly + 18% GST via Razorpay</span>
+            </div>
+          </div>
+
+          {/* Cancel instructions — no in-app cancel button intentionally.
+              Razorpay one-time orders don't support programmatic cancel;
+              the subscription expires at period end anyway. We show clear
+              instructions so users aren't confused. */}
+          <div
+            className="mt-4 p-3 rounded-xl text-xs leading-relaxed"
+            style={{
+              background: 'var(--surface-2)',
+              color: 'var(--text-3)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <span style={{ color: 'var(--text-2)', fontWeight: 500 }}>To cancel:</span>{' '}
+            Your plan does not auto-renew — each billing period is a one-time payment via
+            Razorpay. Simply do not repurchase when your current period ends on{' '}
+            <span style={{ color: 'var(--text-2)' }}>
+              {formatDate(meData.subscription.expires_at)}
+            </span>
+            . You keep full access until that date. No hidden fees, no cancellation needed.{' '}
+            Questions?{' '}
+            <a
+              href="mailto:support@vachix.in?subject=Billing%20question"
+              style={{ color: 'var(--accent)', textDecoration: 'none' }}
+            >
+              Email us →
+            </a>
+          </div>
         </Card>
       )}
 

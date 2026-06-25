@@ -7,15 +7,17 @@ import { trackEvent } from '../analytics/events.service';
 import { getSessionDefaults, getDashboardRecommendations } from '../ai/onboarding-context';
 import { ok, notFound } from '../../core/utils/response';
 import { SESSION_CAP_FREE } from '../../core/config/env';
+import { db } from '../../core/database/client';
 
 // GET /api/me
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
 
-  const [profile, weakAreas, referralInfo] = await Promise.all([
+  const [profile, weakAreas, referralInfo, activeSub] = await Promise.all([
     getUserProfile(userId),
     getWeakAreasForUser(userId),
     getOrCreateReferralCode(userId).catch(() => null),  // non-fatal — never breaks /api/me
+    db.getActiveSubscription(userId).catch(() => null), // non-fatal — billing info for profile UI
   ]);
 
   if (!profile) {
@@ -126,6 +128,14 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
     // Referral info included in every /api/me response so share buttons
     // and invite flows have everything they need without a second request.
     referral: referralInfo,
+    // Active subscription billing info — used by the profile page to show
+    // renewal date and cancellation instructions. Null for free plan users.
+    subscription: activeSub ? {
+      plan:       activeSub.plan,
+      status:     activeSub.status,
+      started_at: activeSub.started_at,
+      expires_at: activeSub.expires_at,
+    } : null,
   });
 });
 

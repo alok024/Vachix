@@ -6,7 +6,10 @@ import { useEffect } from 'react';
 import { ApiError } from '@/lib/api';
 import { UpgradeModal } from '@/components/shared/UpgradeModal';
 import { ToastStack } from '@/components/shared/ToastStack';
+import { CookieConsent } from '@/components/shared/CookieConsent';
 import posthog from 'posthog-js';
+
+const COOKIE_CONSENT_KEY = 'vachix-cookie-consent';
 
 // QueryClient — shared config
 function makeQueryClient() {
@@ -38,18 +41,59 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-// PostHog init
+// PostHog init — gated behind explicit cookie consent.
+// We check localStorage for the consent decision before calling posthog.init().
+// The CookieConsent banner (rendered in Providers below) writes this key when
+// the user makes a choice. Until then, no analytics data is sent.
+//
+// IMPORTANT: posthog.init() is intentionally NOT called if:
+//   - The user has not yet responded to the banner (key absent)
+//   - The user declined (key === 'declined')
+//   - NEXT_PUBLIC_POSTHOG_KEY is not set
+//
+// If the user accepts AFTER mount (i.e. they just clicked Accept on the banner
+// for the first time), a storage event fires and re-runs the effect — so
+// PostHog initialises in that same session without needing a page reload.
 function PostHogInit() {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (!key) return;
-    posthog.init(key, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
-      capture_pageview: true,
-      capture_pageleave: true,
-      person_profiles: 'identified_only',
-    });
+
+    function maybeInit() {
+      let consent: string | null = null;
+      try {
+        consent = localStorage.getItem(COOKIE_CONSENT_KEY);
+      } catch {
+        // localStorage blocked in some private-mode browsers — skip init.
+        return;
+      }
+      if (consent !== 'accepted') return;
+
+      // Guard against calling init twice (e.g. if the effect re-runs in dev).
+      if (posthog.__loaded) return;
+
+      posthog.init(key!, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+        capture_pageview: true,
+        capture_pageleave: true,
+        person_profiles: 'identified_only',
+      });
+    }
+
+    // Run immediately in case consent was given in a previous session.
+    maybeInit();
+
+    // Also listen for the storage event so PostHog starts the moment the user
+    // clicks Accept in the CookieConsent banner (no reload required).
+    function onStorage(e: StorageEvent) {
+      if (e.key === COOKIE_CONSENT_KEY && e.newValue === 'accepted') {
+        maybeInit();
+      }
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
+
   return null;
 }
 
@@ -69,6 +113,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {children}
       <UpgradeModal />
       <ToastStack />
+      <CookieConsent />
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={false} />
       )}

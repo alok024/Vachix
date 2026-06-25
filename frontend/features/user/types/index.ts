@@ -20,6 +20,16 @@ export interface MeResponse {
   // consumed them.
   session_defaults?:  SessionDefaults;
   recommendations?:   DashboardRecommendation[];
+  // Active subscription billing info — null for free plan users.
+  // Used by the profile page to show renewal date and cancellation instructions.
+  subscription?:      SubscriptionInfo | null;
+}
+
+export interface SubscriptionInfo {
+  plan:       string;
+  status:     string;
+  started_at: string;
+  expires_at: string;
 }
 
 export interface SessionDefaults {

@@ -237,6 +237,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        {/* Sidebar footer links — bug report + privacy */}
+        <div
+          className="px-3 pt-2 pb-1 flex items-center gap-3 flex-shrink-0"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <a
+            href="mailto:support@vachix.in?subject=Bug%20Report&body=Page%3A%20%0AWhat%20happened%3A%20%0ASteps%20to%20reproduce%3A%20"
+            className="text-[10px] font-medium transition-colors duration-200"
+            style={{ color: 'var(--text-3)', fontFamily: 'var(--mono)', letterSpacing: '0.04em' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
+          >
+            Report a bug
+          </a>
+          <span style={{ color: 'var(--border2)', fontSize: 10 }}>·</span>
+          <a
+            href="/privacy"
+            className="text-[10px] font-medium transition-colors duration-200"
+            style={{ color: 'var(--text-3)', fontFamily: 'var(--mono)', letterSpacing: '0.04em' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
+          >
+            Privacy
+          </a>
+        </div>
+
         {/* User chip */}
         <div className="p-3 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <button
