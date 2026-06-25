@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { MemoryStore } from 'express-rate-limit';
 import * as AuthController from './auth.controller';
 import { validate, authMiddleware, asyncHandler } from '../../core/middleware';
 import {
@@ -13,19 +13,19 @@ import {
 
 const router = Router();
 
-// In test mode, normal requests bypass the in-memory rate-limit store so
-// call counts don't bleed across tests (each test is logically independent).
-// Rate-limit behaviour is still tested explicitly: the dedicated test sets
-// the `x-test-rate-limit: 1` header to opt back in and verifies the 429.
-// This header is checked only when NODE_ENV === 'test', so it has zero
-// surface area in staging or production.
+// loginLimiterStore is exported so tests can call resetKey() in beforeEach,
+// clearing per-IP hit counts between test cases to prevent cross-test bleed.
+// The limiter itself is stateless between test files (each Jest worker gets a
+// fresh module registry), but within a single test file multiple tests share
+// the same in-process store — without a reset, hit counts accumulate and the
+// 11th request trips the limiter even in unrelated tests.
+export const loginLimiterStore = new MemoryStore();
+
 const loginLimiter = rateLimit({
   windowMs: 60_000,
   max:      10,
   message:  { error: 'Too many login attempts. Please wait a minute.' },
-  skip: (req) =>
-    process.env.NODE_ENV === 'test' &&
-    req.headers['x-test-rate-limit'] !== '1',
+  store:    loginLimiterStore,
 });
 
 const registerLimiter = rateLimit({

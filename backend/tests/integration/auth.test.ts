@@ -97,6 +97,7 @@ jest.mock('../../src/core/database/client', () => ({
 
 import app from '../../src/app';
 import { db } from '../../src/core/database/client';
+import { loginLimiterStore } from '../../src/modules/auth/auth.routes';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -134,9 +135,13 @@ async function buildFakeUser(overrides: Partial<{
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('POST /api/login', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     (db.getUsage as jest.Mock).mockResolvedValue({ call_count: 0 });
+    // Reset the loginLimiter's in-memory store between tests so hit counts
+    // from earlier tests don't bleed into later ones and cause spurious 429s.
+    // MemoryStore.resetAll() is available in express-rate-limit v7.
+    await loginLimiterStore.resetAll();
   });
 
   // ── Input validation (Zod layer) ────────────────────────────────────────────
@@ -265,7 +270,6 @@ describe('POST /api/login', () => {
       const res = await request(app)
         .post('/api/login')
         .set('X-Forwarded-For', '10.0.0.99') // consistent IP across all attempts
-        .set('x-test-rate-limit', '1')        // opt-in to limiter for this test only
         .send({ email: 'test@test.com', password: 'x' });
       statuses.push(res.status);
     }
