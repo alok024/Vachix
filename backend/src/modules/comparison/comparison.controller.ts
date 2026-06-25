@@ -16,12 +16,7 @@ export const createComparisonToken = asyncHandler(async (req: Request, res: Resp
   const userId    = req.user!.id;
   const sessionId = req.params.id;
 
-  const { question_index } = req.body as { question_index?: number };
-
-  if (typeof question_index !== 'number' || !Number.isInteger(question_index) || question_index < 0) {
-    badRequest(res, 'question_index must be a non-negative integer', 'invalid_question_index');
-    return;
-  }
+  const { question_index } = req.body as { question_index: number };
 
   // Verify session belongs to this user
   const session = await db.getSessionById(sessionId, userId);

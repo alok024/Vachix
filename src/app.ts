@@ -10,7 +10,6 @@ import { unauthorized, notFound }     from './core/utils/response';
 import { logger }                    from './infra/logger';
 import { scheduleSubscriptionExpiry, scheduleSessionExpiry, scheduleBlacklistCleanup, scheduleComparisonCleanup, scheduleWeeklyProgressCards } from './infra/queue/dispatcher';
 import { initSentry, captureException, getMetrics } from './infra/observability';
-import { requestContextStore }                       from './infra/request-context';
 import { startLoadMonitor, getSystemLoadStats }      from './infra/load-monitor';
 import { getAILimiterStats }                         from './infra/ai-limiter';
 import { groqBreaker, openaiBreaker }                from './infra/circuit-breaker';
@@ -128,22 +127,19 @@ app.use(rateLimit({
 
 // Request ID + structured request logging
 // Every request gets a unique requestId attached to req and to the
-// response header (X-Request-Id). The AsyncLocalStorage store is seeded
-// here so every log call downstream (services, ledgers, queue dispatchers)
-// automatically includes requestId — no manual threading needed.
+// response header (X-Request-Id). Downstream log calls reference
+// req.requestId so every log line for a request is trivially filterable.
 app.use((req: Request, res: Response, next: NextFunction) => {
   req.requestId = (req.headers['x-request-id'] as string | undefined) ?? crypto.randomUUID();
   res.setHeader('X-Request-Id', req.requestId);
-
-  requestContextStore.run({ requestId: req.requestId }, () => {
-    logger.info('incoming_request', {
-      method:    req.method,
-      path:      req.path,
-      ip:        req.ip,
-      origin:    req.headers.origin,
-    });
-    next();
+  logger.info('incoming_request', {
+    requestId: req.requestId,
+    method:    req.method,
+    path:      req.path,
+    ip:        req.ip,
+    origin:    req.headers.origin,
   });
+  next();
 });
 
 // Health & status endpoints

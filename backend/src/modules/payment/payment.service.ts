@@ -5,6 +5,7 @@ import { env, PLAN_PRICES } from '../../core/config/env';
 import { db } from '../../core/database/client';
 import { generateTokens } from '../auth/auth.service';
 import { paymentLogger } from '../../infra/logger';
+import { capturePaymentException } from '../../infra/observability';
 
 // Razorpay instance
 
@@ -52,6 +53,10 @@ export async function createOrder(
       userId, plan, testMode: useTest,
       statusCode: rzpErr.statusCode,
       rzpError:   rzpErr.error,
+    });
+    capturePaymentException(err, {
+      userId,
+      extra: { plan, testMode: useTest, rzpCode: rzpErr.error?.code },
     });
     throw new AppError(
       rzpErr.statusCode && rzpErr.statusCode < 500 ? rzpErr.statusCode : 502,

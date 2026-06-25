@@ -9,6 +9,7 @@ import { unauthorized, forbidden, badRequest, fail } from './utils/response';
 import { AppError } from './utils/errors';
 import { trackEvent } from '../modules/analytics/events.service';
 import { ACCESS_COOKIE } from '../modules/auth/cookies';
+import { setContextUserId } from '../infra/request-context';
 
 // Token extraction
 // Prefers the httpOnly access-token cookie (set by login/register/refresh).
@@ -111,6 +112,10 @@ export async function authMiddleware(
     }
 
     req.user = payload;
+    // Propagate userId into the AsyncLocalStorage request context so
+    // every downstream log call (services, ledgers) includes userId
+    // automatically — no manual threading required.
+    setContextUserId(payload.id);
     next();
   } catch {
     unauthorized(res, 'Invalid or expired token', 'invalid_token');
@@ -174,7 +179,7 @@ export async function checkUsageLimit(
 
     next();
   } catch (err) {
-    log.error('checkUsageLimit error', { error: err });
+    log.error('checkUsageLimit error', { userId: user.id, error: err });
     next(err);
   }
 }

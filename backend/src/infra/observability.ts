@@ -12,7 +12,31 @@
  *
  *   Usage:
  *     captureException(err, { userId, plan, extra })
+ *     capturePaymentException(err, { userId, plan, extra })  ← payment-tagged
  *     setUserContext(userId, plan)
+ *
+ *   ─── Sentry Alert Rules (configure: Sentry → Alerts → Create Alert Rule) ──
+ *
+ *   Rule 1 — Error spike
+ *     Condition : Number of errors > 10 in 5 minutes
+ *     Filter    : environment = production
+ *     Action    : Email + Slack notification
+ *     Catches   : Regressions, bot abuse, deploy breakage.
+ *
+ *   Rule 2 — New issue type (first occurrence)
+ *     Condition : A new issue is created
+ *     Filter    : environment = production
+ *     Action    : Email notification
+ *     Catches   : Crash types never seen before — the silent ones.
+ *
+ *   Rule 3 — Payment errors (revenue-impacting, tight threshold)
+ *     Condition : Number of errors > 1 in 5 minutes
+ *     Filter    : environment = production
+ *                 tag payment = true  (set by capturePaymentException)
+ *                 OR title contains "payment" OR "razorpay" OR "subscription"
+ *     Action    : Immediate email + Slack
+ *     Catches   : Missed webhooks, failed subscription state transitions.
+ *   ─────────────────────────────────────────────────────────────────────────
  *
  * B. In-process metrics
  *   Lightweight counters/gauges that live in memory.  Exposed via
@@ -107,6 +131,41 @@ export function captureException(
 /** Attach user context to all subsequent Sentry events in this scope. */
 export function setSentryUser(userId: string, plan: string): void {
   _sentry?.setUser({ id: userId, plan });
+}
+
+/**
+ * Report a payment or subscription error to Sentry.
+ *
+ * Identical to captureException but adds a `payment = true` tag so
+ * Sentry Alert Rule 3 (tight 1-error threshold) fires on these instead
+ * of waiting for the generic 10-error spike. Call this from:
+ *   - payment.service.ts  (webhook processing, subscription state changes)
+ *   - payment.controller.ts  (order creation, verification)
+ *
+ * The tag is visible in Sentry under Issue → Tags → payment.
+ */
+export function capturePaymentException(
+  err:  unknown,
+  ctx?: { userId?: string; plan?: string; extra?: Record<string, unknown> }
+): void {
+  if (!_sentry) return;
+
+  try {
+    _sentry.withScope(scope => {
+      // Tag that drives Sentry Alert Rule 3
+      (scope as unknown as { setTag: (k: string, v: unknown) => void }).setTag('payment', true);
+      if (ctx?.extra) {
+        Object.entries(ctx.extra).forEach(([k, v]) => scope.setExtra(k, v));
+      }
+      if (ctx?.userId) {
+        scope.setExtra('userId', ctx.userId);
+        scope.setExtra('plan',   ctx.plan ?? 'unknown');
+      }
+      _sentry!.captureException(err);
+    });
+  } catch {
+    // Never let observability crash the app
+  }
 }
 
 // B. Metrics

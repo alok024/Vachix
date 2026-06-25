@@ -34,13 +34,13 @@ const EnvSchema = z.object({
   SUPABASE_ANON_KEY:    z.string().min(1).optional(),
 
   // Auth
-  JWT_SECRET:         z.string().min(1),
-  JWT_REFRESH_SECRET: z.string().min(1),
+  JWT_SECRET:         z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
 
   // secret used to HMAC-sign public report share tokens, preventing
   // anyone from forging a valid token for a session UUID they don't
   // already hold a legitimate token for.
-  REPORT_SECRET: z.string().min(1),
+  REPORT_SECRET: z.string().min(32, 'REPORT_SECRET must be at least 32 characters'),
 
   // AI providers
   GROQ_API_KEY:   z.string().min(1),

@@ -36,14 +36,9 @@ export const getVapidPublicKey = asyncHandler(async (_req: Request, res: Respons
 export const subscribePush = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { endpoint, keys } = req.body as {
-    endpoint?: string;
-    keys?: { p256dh?: string; auth?: string };
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
   };
-
-  if (!endpoint || !keys?.p256dh || !keys?.auth) {
-    badRequest(res, 'endpoint and keys (p256dh, auth) are required', 'invalid_subscription');
-    return;
-  }
 
   await db.upsertPushSubscription({
     user_id:  userId,
@@ -61,12 +56,7 @@ export const subscribePush = asyncHandler(async (req: Request, res: Response) =>
 // Body: { endpoint: string }
 export const unsubscribePush = asyncHandler(async (req: Request, res: Response) => {
   const userId   = req.user!.id;
-  const endpoint = (req.body as { endpoint?: string }).endpoint;
-
-  if (!endpoint) {
-    badRequest(res, 'endpoint is required', 'missing_endpoint');
-    return;
-  }
+  const endpoint = (req.body as { endpoint: string }).endpoint;
 
   await db.deletePushSubscriptionForUser(endpoint, userId);
   log.info('Push subscription removed', { userId });

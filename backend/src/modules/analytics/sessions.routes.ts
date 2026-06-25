@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { authMiddleware, requireVerified, requireOnboarded, requirePro, requireStarterTier, validateIntParam } from '../../core/middleware';
+import { z } from 'zod';
+import { authMiddleware, requireVerified, requireOnboarded, requirePro, requireStarterTier, validateIntParam, validate } from '../../core/middleware';
 import {
   createSession,
   getSessions,
@@ -25,6 +26,10 @@ const compareLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   message: { success: false, error: { code: 'rate_limited', message: 'Too many comparison requests. Please wait a moment.' } },
+});
+
+const CompareBodySchema = z.object({
+  question_index: z.number().int().nonnegative(),
 });
 
 // requireOnboarded: sessions are meaningless without profession/goal context
@@ -54,7 +59,7 @@ router.get('/:id/share-token',       authMiddleware, requireVerified, validateIn
 router.get('/:id/certificate-token', authMiddleware, requireVerified, validateIntParam('id'), getSessionCertificateToken);
 // Friend score comparison — create a challenge for a specific question.
 // POST so it creates a new comparison row; body carries question_index.
-router.post('/:id/compare',          authMiddleware, requireVerified, compareLimiter, validateIntParam('id'), createComparisonToken);
+router.post('/:id/compare',          authMiddleware, requireVerified, compareLimiter, validateIntParam('id'), validate(CompareBodySchema), createComparisonToken);
 router.get('/:id',                   authMiddleware, requireVerified, validateIntParam('id'), getSession);
 
 export default router;
