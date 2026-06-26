@@ -338,12 +338,30 @@ async function _saveSession(input: SaveSessionInput): Promise<SaveSessionResult>
   // No JS read → no race condition.  The SQL function holds a row-level
   // lock (FOR UPDATE) for the duration so concurrent sessions serialize
   // at the DB layer, not the application layer.
-  const updatedStats = await db.incrementStats(
-    userId,
-    score          || 0,
-    breakdown.jobReady,
-    score          || 0,   // total_score delta = this session's score
-  );
+  //
+  // Non-fatal: wrapped in try/catch so that a DB-level error (e.g. a
+  // PostgREST PGRST203 function-overload ambiguity from a stale bigint
+  // overload co-existing with the uuid version) doesn't propagate as an
+  // unhandled rejection and crash the process.  Stats under-counting is
+  // preferable to dropping the whole session result.  The error is still
+  // logged as [err] so it shows up in Railway and Sentry.
+  let updatedStats: { sessions: number; best_score: number; streak: number; avg_job_ready_score: number };
+  try {
+    updatedStats = await db.incrementStats(
+      userId,
+      score          || 0,
+      breakdown.jobReady,
+      score          || 0,   // total_score delta = this session's score
+    );
+  } catch (statsErr) {
+    log.error('incrementStats failed (non-fatal) — stats not updated for this session', {
+      userId, error: (statsErr as Error)?.message,
+    });
+    // Return zeroed-out stats so the session result can still be returned
+    // to the client.  Streak-gated features (upsell triggers, readiness
+    // report, voice bonus) will silently skip for this session only.
+    updatedStats = { sessions: 0, best_score: 0, streak: 0, avg_job_ready_score: 0 };
+  }
 
   const newSessions = updatedStats.sessions;
   const newBest     = updatedStats.best_score;

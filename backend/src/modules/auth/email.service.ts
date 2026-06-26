@@ -41,6 +41,16 @@ async function sendEmail(opts: {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    // Log here as well as throwing — callers that catch non-fatally may not
+    // re-log the full message, so this guarantees Railway always shows the
+    // Resend HTTP status + response body (e.g. 403 invalid_api_key,
+    // 422 validation_error, 429 rate limited).
+    authLogger.error('Resend API rejected email', {
+      status:  res.status,
+      to,
+      subject,
+      body,
+    });
     throw new AppError(502, 'email_delivery_failed', `Resend delivery failed (${res.status}): ${body}`);
   }
 }

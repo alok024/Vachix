@@ -107,7 +107,13 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     // decides whether to call it.  Non-fatal: the token is already stored in
     // the DB; if the send fails, the user can request again.
     await sendPasswordResetEmail(email, resetLink).catch(err =>
-      authLogger.error('Failed to send password reset email', { email, error: err })
+      authLogger.error('Failed to send password reset email', {
+        email,
+        error: (err as Error)?.message,
+        // err.message includes the Resend HTTP status + body, e.g.:
+        // "Resend delivery failed (403): {"name":"missing_api_key"}"
+        // Passing `err` directly logs {} because Error props aren't enumerable.
+      })
     );
   }
 

@@ -174,7 +174,14 @@ export async function registerUser(
     } catch (err) {
       // Delivery failed — don't strand the user unable to log in at all.
       // Fall back to auto-verify and let them resend later if they want to.
-      authLogger.error('createVerificationToken failed — falling back to auto-verify', { userId: user.id, err });
+      authLogger.error('createVerificationToken failed — falling back to auto-verify', {
+        userId:  user.id,
+        error:   (err as Error)?.message,
+        // err.message for AppError includes the Resend HTTP status + response
+        // body (e.g. "Resend delivery failed (403): {"name":"missing_api_key"}")
+        // which is invisible if err is passed directly (Error props aren't
+        // JSON-serialisable, so Winston would log {}).
+      });
       await db.updateUser(user.id, { email_verified: true });
       verified = true;
     }
