@@ -31,6 +31,23 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # Validate all package.json files before attempting install.
+      # This catches JSON syntax errors (trailing commas, missing commas)
+      # that would otherwise surface as a cryptic EJSONPARSE from npm.
+      - name: Validate package.json files
+        run: |
+          echo "Validating package.json files..."
+          for f in package.json shared/package.json backend/package.json frontend/package.json; do
+            if [ -f "$f" ]; then
+              node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" \
+                && echo "  ✓ $f" \
+                || { echo "  ✗ $f is invalid JSON"; exit 1; }
+            fi
+          done
+
+      # Use `npm ci` (not `npm install`) for reproducible, lock-file-pinned installs.
+      # If you see EUSAGE here it means package-lock.json was not committed — run
+      # `npm install` locally and commit the updated lock file.
       - name: Install dependencies
         run: npm ci
 
@@ -42,7 +59,13 @@ jobs:
 
       - name: TypeScript check frontend
         run: npx tsc --noEmit --project frontend/tsconfig.json
-        continue-on-error: true   # Remove once frontend types are fully clean
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npx next lint
+
+      - name: Build frontend
+        run: npm run build --workspace=frontend
 
       - name: Run backend tests
         run: npm test --workspace=backend
@@ -66,11 +89,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci
+
+      # Validate JSON before npm ci — gives a clear error instead of EJSONPARSE
+      - name: Validate package.json files
+        run: |
+          for f in package.json shared/package.json backend/package.json frontend/package.json; do
+            if [ -f "$f" ]; then
+              node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" \
+                && echo "  ✓ $f" \
+                || { echo "  ✗ $f is invalid JSON"; exit 1; }
+            fi
+          done
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Backend npm audit
         # Backend has no frontend build tooling — clean audit expected.

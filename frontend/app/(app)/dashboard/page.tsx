@@ -18,9 +18,56 @@ import { formatDate, scoreColor } from '@/lib/utils';
 import { Target, Zap, TrendingUp, Lightbulb, FileText, ExternalLink, Trophy, CalendarCheck } from 'lucide-react';
 import { analytics } from '@/lib/analytics';
 import { FLAG } from '@/lib/feature-flags'; // Bug #5 fix
-import { JobLandedModal } from '@/components/shared/JobLandedModal';
+import dynamic from 'next/dynamic';
 import type { Session, WeakArea } from '@/types';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
+
+// ── Dynamic imports — defers the ~120 kB recharts bundle and the modal chunk
+// until they are actually needed, keeping first-load JS lean. ─────────────
+
+const ScoreHistoryChart = dynamic(
+  () => import('@/components/shared/ScoreHistoryChart'),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="rounded-2xl border overflow-hidden"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', height: 196 }}
+      >
+        <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="h-4 w-28 rounded" style={{ background: 'var(--surface-2)' }} />
+        </div>
+        <div className="px-4 pt-4 pb-2">
+          <div className="h-[140px] rounded-lg animate-pulse" style={{ background: 'var(--surface-2)' }} />
+        </div>
+      </div>
+    ),
+  },
+);
+
+const SpeechTrendsChart = dynamic(
+  () => import('@/components/shared/SpeechTrendsChart'),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="rounded-2xl border overflow-hidden"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', height: 320 }}
+      >
+        <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="h-4 w-28 rounded" style={{ background: 'var(--surface-2)' }} />
+        </div>
+        <div className="px-4 pt-4 pb-2">
+          <div className="h-[240px] rounded-lg animate-pulse" style={{ background: 'var(--surface-2)' }} />
+        </div>
+      </div>
+    ),
+  },
+);
+
+const JobLandedModal = dynamic(
+  () => import('@/components/shared/JobLandedModal').then((m) => ({ default: m.JobLandedModal })),
+  { ssr: false },
+);
 
 const QUICK_STARTS = [
   { label: 'Software Dev',      desc: 'AI Chat · Friendly',   emoji: '💻', profession: 'Software Developer',        mode: 'chat' },
@@ -98,70 +145,6 @@ function useCountUp(target: number, options?: { duration?: number; delay?: numbe
   }, [target, duration, delay, decimals]);
 
   return display;
-}
-
-// ── Feature 24 — Score chart custom components ───────────────────────────
-// Custom recharts dot: filled circle with accent glow ring.
-interface CustomDotProps { cx?: number; cy?: number; payload?: { score: number }; dataKey?: string }
-function ScoreDot(props: CustomDotProps) {
-  const { cx = 0, cy = 0 } = props;
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />
-    </g>
-  );
-}
-function ScoreActiveDot(props: CustomDotProps) {
-  const { cx = 0, cy = 0 } = props;
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={8} fill="var(--accent)" fillOpacity={0.15} />
-      <circle cx={cx} cy={cy} r={5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2.5} />
-    </g>
-  );
-}
-
-// Custom tooltip for Feature 24
-interface TooltipPayloadItem { value: number; payload: { profession?: string; created_at?: string; score: number } }
-interface CustomTooltipProps { active?: boolean; payload?: TooltipPayloadItem[]; label?: string; prevScores?: number[] }
-function ScoreTooltip({ active, payload, prevScores = [] }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const item   = payload[0].payload;
-  const score  = item.score;
-  // recharts passes dataIndex via payload when AreaChart is used — fall back to score indexOf
-  const rawIdx: number = (payload[0] as unknown as { index?: number }).index ?? prevScores.indexOf(score);
-  const prev   = rawIdx > 0 ? prevScores[rawIdx - 1] : null;
-  const delta  = prev != null ? +(score - prev).toFixed(1) : null;
-  const date   = item.created_at
-    ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-    : '';
-  return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border2)',
-      borderRadius: 10,
-      padding: '10px 14px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-      minWidth: 140,
-    }}>
-      <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>{date}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--accent)', lineHeight: 1 }}>
-        {score.toFixed(1)}<span style={{ fontSize: 12, color: 'var(--text-3)' }}>/10</span>
-      </div>
-      {item.profession && (
-        <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 3 }}>{item.profession}</div>
-      )}
-      {delta != null && (
-        <div style={{
-          fontSize: 11, fontWeight: 600, marginTop: 6, paddingTop: 6,
-          borderTop: '1px solid var(--border)',
-          color: delta >= 0 ? 'var(--success)' : 'var(--error)',
-        }}>
-          {delta >= 0 ? `↑ +${delta}` : `↓ ${delta}`} from prev
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -592,66 +575,7 @@ export default function DashboardPage() {
 
       {/* Feature 24 — Score chart: gradient fill + custom dot + polished tooltip */}
       {hasData && chartData.length >= 2 && (
-        <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>Score history</span>
-            {(() => {
-              const last = chartData[chartData.length - 1]?.score ?? 0;
-              const prev = chartData[chartData.length - 2]?.score ?? 0;
-              const delta = +(last - prev).toFixed(1);
-              return delta !== 0 ? (
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{
-                    background: delta > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                    color: delta > 0 ? 'var(--success)' : 'var(--error)',
-                    border: `1px solid ${delta > 0 ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                  }}>
-                  {delta > 0 ? `↑ +${delta}` : `↓ ${delta}`} trending
-                </span>
-              ) : null;
-            })()}
-          </div>
-          <div className="px-4 pt-4 pb-2">
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0}    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="created_at"
-                  tickFormatter={(v: string) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  ticks={[0, 5, 10]}
-                  tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  content={<ScoreTooltip prevScores={chartScores} />}
-                  cursor={{ stroke: 'var(--border2)', strokeWidth: 1, strokeDasharray: '4 2' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke="var(--accent)"
-                  strokeWidth={2}
-                  fill="url(#scoreGradient)"
-                  dot={<ScoreDot />}
-                  activeDot={<ScoreActiveDot />}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ScoreHistoryChart chartData={chartData} chartScores={chartScores} />
       )}
 
       {/* Job Readiness */}
@@ -803,104 +727,7 @@ export default function DashboardPage() {
            to enable. Labelled "Beta" because WPM is an estimate (typed, not spoken)
            and filler detection is heuristic, not ML-based. */}
       {FLAG.SPEECH_ANALYTICS_CARD && (speechTrend ?? []).length >= 3 && (
-        <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-1)' }}>
-              🗣️ Speech Trends
-            </span>
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-              style={{ background: 'var(--warn-dim)', color: 'var(--warn)' }}
-            >
-              Beta
-            </span>
-          </div>
-
-          {/* Charts */}
-          <div className="px-4 pt-4 pb-5 space-y-6">
-
-            {/* WPM chart */}
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-3)' }}>
-                Typing Speed (WPM)
-              </div>
-              <ResponsiveContainer width="100%" height={100}>
-                <LineChart data={speechTrend} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="created_at"
-                    tickFormatter={(v: string) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                    labelFormatter={(v: string) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    formatter={(v: number) => [`${v} wpm`, 'Speed']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="wpm"
-                    stroke="var(--accent)"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: 'var(--accent)' }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Filler count chart */}
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-3)' }}>
-                Filler Words Per Session
-              </div>
-              <ResponsiveContainer width="100%" height={100}>
-                <LineChart data={speechTrend} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="created_at"
-                    tickFormatter={(v: string) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--text-3)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
-                    labelFormatter={(v: string) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    formatter={(v: number) => [`${v}`, 'Fillers']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="filler_count"
-                    stroke="var(--warn)"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: 'var(--warn)' }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-              <p className="text-[11px] font-medium mt-2 leading-relaxed" style={{ color: 'var(--text-3)' }}>
-                Lower is better. Common fillers include "um", "uh", "like", "basically", "so".
-                Detected from your typed answers — estimates only.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SpeechTrendsChart speechTrend={speechTrend!} />
       )}
 
       {/* Upgrade strip */}

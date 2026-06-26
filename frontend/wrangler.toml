@@ -5,7 +5,12 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
 [vars]
-NEXT_PUBLIC_RAZORPAY_TEST_MODE = "true"
+# Set to "false" for production deployments.
+# The backend enforces payment mode server-side via RAZORPAY_KEY_ID vs
+# RAZORPAY_TEST_KEY_ID — this var only controls whether the frontend appends
+# ?mode=test to /api/payment/create-order. Leaving it "true" here routes all
+# Cloudflare Pages traffic through test keys even in production.
+NEXT_PUBLIC_RAZORPAY_TEST_MODE = "false"
 
 # Cloudflare Pages build settings.
 # In the CF Pages dashboard, set:

@@ -1,1 +1,36 @@
+# Dependencies
 node_modules
+
+# Build outputs
+backend/dist
+frontend/.next
+frontend/.vercel
+frontend/out
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# Cloudflare / Wrangler
+.wrangler

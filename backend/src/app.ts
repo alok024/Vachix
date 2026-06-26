@@ -168,16 +168,18 @@ app.get('/health', (_req: Request, res: Response) => {
  * healthchecks — a 503 here holds traffic back until the instance is ready.
  *
  * Checks:
- *   redis — only when REDIS_URL is set. A misconfigured or unreachable Redis
- *           means BullMQ jobs silently won't process (notes, weak areas,
- *           readiness reports). Surface it here rather than at job dispatch.
+ *   redis — checked in all environments when REDIS_URL is set (ping).
+ *           In production without REDIS_URL, surfaces as 'missing' and
+ *           returns 503 — B2B lead follow-up emails and BullMQ jobs will
+ *           not run, which is a meaningful degradation for a prod deploy.
+ *           In dev/test without REDIS_URL, reports 'disabled' and stays 200.
  *
  * No Supabase check — the SDK uses connection pooling and lazy connects;
  * a ping-style check would create a spurious cold connection on every probe.
  * Supabase errors surface immediately on first real request instead.
  */
 app.get('/health/ready', async (_req: Request, res: Response) => {
-  const checks: Record<string, 'ok' | 'error'> = {};
+  const checks: Record<string, 'ok' | 'error' | 'missing' | 'disabled'> = {};
 
   if (env.REDIS_URL) {
     try {
@@ -187,13 +189,18 @@ app.get('/health/ready', async (_req: Request, res: Response) => {
     } catch {
       checks.redis = 'error';
     }
+  } else if (IS_PROD) {
+    // Production without Redis: B2B lead follow-up emails and background
+    // jobs will silently not run. Surface this as a readiness failure so
+    // Railway holds traffic or alerts on deploy rather than silently
+    // degrading after rollout.
+    checks.redis = 'missing';
+  } else {
+    // Dev/test: Redis is optional — inline fallbacks apply.
+    checks.redis = 'disabled';
   }
 
-  const allOk = Object.values(checks).every(v => v === 'ok');
-  // When no checks are configured (REDIS_URL absent), checks is empty —
-  // every() on an empty array returns true, so the endpoint returns 200.
-  // That matches the /health liveness behaviour and is correct for
-  // no-Redis dev/test environments.
+  const allOk = Object.values(checks).every(v => v === 'ok' || v === 'disabled');
   res.status(allOk ? 200 : 503).json({ ready: allOk, checks });
 });
 
@@ -312,19 +319,19 @@ if (env.NODE_ENV !== 'test') {
     }
   }
 
-  // Warn loudly at boot when METRICS_TOKEN is absent in production.
-  // Without a token, the /health/metrics endpoint is publicly accessible —
-  // anyone can read AI call counters, system RPM, concurrency stats, and
-  // circuit-breaker states. The auth logic in app.get('/health/metrics')
-  // is correct (it checks the token), but it silently passes when the env
-  // var is not set (token === undefined, provided === undefined → authOk = true).
-  // Surfacing this at startup means it shows up in Railway boot logs on
-  // every deploy, making misconfiguration impossible to miss.
+  // Fail hard at boot when METRICS_TOKEN is absent in production.
+  // /health/metrics exposes AI call counters, system RPM, concurrency stats,
+  // and circuit-breaker states. The endpoint already returns 401 when the token
+  // is unset (tokensMatch = false when !token), but requiring it at startup
+  // prevents a misconfigured deploy from ever serving traffic without the
+  // token being explicitly set. Set METRICS_TOKEN to a strong random value
+  // in Railway env vars (e.g. openssl rand -hex 32).
   if (IS_PROD && !env.METRICS_TOKEN) {
-    logger.warn(
-      'METRICS_TOKEN is not set — /health/metrics is publicly accessible in production. ' +
-      'Set METRICS_TOKEN in Railway env vars to restrict access.'
+    logger.error(
+      'METRICS_TOKEN is not set — refusing to start in production. ' +
+      'Set METRICS_TOKEN in Railway env vars to a strong random value.'
     );
+    process.exit(1);
   }
 
   scheduleSubscriptionExpiry().catch(err =>

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as PaymentService from './payment.service';
 import { paymentLogger } from '../../infra/logger';
+import { capturePaymentException } from '../../infra/observability';
 import { ok, badRequest, fail } from '../../core/utils/response';
 import { trackEvent } from '../analytics/events.service';
 import { getOrCreateReferralCode } from '../growth/referral.service';
@@ -130,6 +131,7 @@ export async function webhook(req: Request, res: Response): Promise<void> {
   } catch (err) {
     // AppError carries .statusCode and .code; plain errors fall back to 500.
     const error = err as Error & { statusCode?: number; code?: string };
+    capturePaymentException(err, { extra: { name: error.name, message: error.message } });
     paymentLogger.error('Webhook handling failed', { name: error.name, message: error.message });
     fail(res, error.statusCode ?? 500, error.code ?? 'webhook_failed', error.statusCode && error.statusCode < 500 ? error.message : 'Webhook processing failed');
   }

@@ -1,0 +1,47 @@
+# .gitattributes
+# Enforce LF line endings in the repository for all text files.
+# This ensures npm, Node.js, and CI (Linux) never see stray \r bytes
+# regardless of each developer's core.autocrlf setting.
+
+# Default: normalize all text files to LF in the repo
+* text=auto eol=lf
+
+# Explicitly mark file types as text (belt-and-suspenders for JSON/YAML/TS)
+*.json        text eol=lf
+*.json5       text eol=lf
+*.yaml        text eol=lf
+*.yml         text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.js          text eol=lf
+*.jsx         text eol=lf
+*.mjs         text eol=lf
+*.cjs         text eol=lf
+*.md          text eol=lf
+*.mdx         text eol=lf
+*.css         text eol=lf
+*.html        text eol=lf
+*.sh          text eol=lf
+*.env*        text eol=lf
+Makefile      text eol=lf
+
+# Shell scripts must always be LF — CRLF breaks the shebang on Linux
+*.sh          text eol=lf
+
+# True binary files — never touch line endings
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.eot         binary
+*.otf         binary
+*.mp3         binary
+*.mp4         binary
+*.webm        binary
+*.zip         binary
+*.tar         binary
+*.gz          binary
