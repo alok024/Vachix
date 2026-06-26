@@ -62,7 +62,13 @@ jobs:
 
       - name: Lint frontend
         working-directory: frontend
+        # ESLINT_USE_FLAT_CONFIG=false: eslint-config-next@15 uses the legacy
+        # .eslintrc format. ESLint 9 defaults to flat config mode which breaks
+        # the ajv schema resolution inside next/core-web-vitals. Force legacy
+        # mode until Next.js 15.1+ ships built-in flat config support.
         run: npx next lint
+        env:
+          ESLINT_USE_FLAT_CONFIG: 'false'
 
       - name: Build frontend
         run: npm run build --workspace=frontend
