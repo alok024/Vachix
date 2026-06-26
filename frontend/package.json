@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npx next build",
-    "build:cf": "npx next build && npx @cloudflare/next-on-pages",
+    "build:cf": "node -e \"require('fs').writeFileSync('node_modules/next/dist/lib/helpers/get-registry.js', require('fs').readFileSync('node_modules/next/dist/lib/helpers/get-registry.js','utf8').replace('yarn config get registry','npm config get registry'))\" && npx next build && npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
