@@ -26,7 +26,8 @@
     "web-push": "^3.6.7",
     "winston": "^3.11.0",
     "zod": "^3.22.4",
-    "@colors/colors": "1.6.0"
+    "@colors/colors": "1.6.0",
+    "@dabh/diagnostics": "^2.0.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
