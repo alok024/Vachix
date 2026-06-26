@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "npx next build",
-    "build:cf": "node -e \"const fs=require('fs');const f='node_modules/next/dist/lib/helpers/get-pkg-manager.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(\\\"lockFile: 'yarn.lock'\\\",\\\"lockFile: '_no_yarn.lock'\\\"))\" && npx next build && npx @cloudflare/next-on-pages",    "start": "next start",
+    "build:cf": "node -e \"const fs=require('fs');const f='node_modules/next/dist/lib/helpers/get-pkg-manager.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(\\\"lockFile: 'yarn.lock'\\\",\\\"lockFile: '_no_yarn.lock'\\\"))\" && npx next build && npx @cloudflare/next-on-pages",
+    "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "pages:build": "npx next build && npx @cloudflare/next-on-pages",
@@ -53,5 +54,8 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "@next/swc-linux-x64-gnu": "^15.0.5"
   }
 }
