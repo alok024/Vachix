@@ -3,4 +3,8 @@ buildCommand = "npm run build"
 
 [deploy]
 startCommand = "node backend/dist/app.js"
+<<<<<<< HEAD
 healthcheckPath = "/health/ready"
+=======
+healthcheckPath = "/health/ready"
+>>>>>>> main

@@ -37,10 +37,11 @@ jest.mock('../../src/infra/logger', () => ({
 }));
 
 jest.mock('../../src/infra/observability', () => ({
-  initSentry:      jest.fn().mockResolvedValue(undefined),
-  captureException: jest.fn(),
-  getMetrics:      jest.fn().mockReturnValue({}),
-}));
+  initSentry:              jest.fn().mockResolvedValue(undefined),
+  captureException:        jest.fn(),
+  capturePaymentException: jest.fn(),
+  getMetrics:              jest.fn().mockReturnValue({}),
+}));;
 
 jest.mock('../../src/infra/load-monitor', () => ({
   startLoadMonitor:   jest.fn(),
