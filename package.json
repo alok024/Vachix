@@ -6,12 +6,14 @@
     "build": "npm run build --workspace=shared && npm run build --workspace=backend",
     "start": "node backend/dist/app.js"
   },
-  "overrides": {
+"overrides": {
     "ws": "^8.18.1",
     "undici": "^7.10.0",
     "cookie": "^0.7.2",
     "tar": "^7.4.3",
     "path-to-regexp": "^8.2.0",
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "@alloc/quick-lru": "^5.2.0",
+    "@babel/runtime": "^7.26.0"
   }
 }
