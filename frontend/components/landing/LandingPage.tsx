@@ -63,14 +63,25 @@ interface GlassConfig { icon: string; title: string; body: string; cta: string; 
 
 export default function LandingPage() {
   const router = useRouter();
-  const [topbarOpen, setTopbarOpen] = useState(true);
+  const [topbarOpen, setTopbarOpen] = useState(false); // defer to effect to avoid SSR mismatch
+
+  useEffect(() => {
+    // Restore banner visibility — dismissed state persists across page loads
+    const dismissed = typeof window !== 'undefined' && window.localStorage.getItem('vachix_topbar_dismissed') === '1';
+    if (!dismissed) setTopbarOpen(true);
+  }, []);
+
+  const handleTopbarDismiss = useCallback(() => {
+    setTopbarOpen(false);
+    if (typeof window !== 'undefined') window.localStorage.setItem('vachix_topbar_dismissed', '1');
+  }, []);
   const [navScrolled, setNavScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isDark = useUIStore((s: { isDark: boolean }) => s.isDark);
   const toggleTheme = useUIStore((s: { toggleTheme: () => void }) => s.toggleTheme);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [faqFilter, setFaqFilter] = useState<string>('All');
-  const [bigNum, setBigNum] = useState('0%');
+  const [bigNum, setBigNum] = useState('87%');
   const bigNumRef = useRef<HTMLSpanElement>(null);
   const demoRef = useRef<HTMLDivElement>(null);
   const barsRef = useRef<HTMLDivElement>(null);
@@ -355,17 +366,20 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
-  /* Big number counter */
+  /* Big number counter — seed at 87% so SSR never shows 0%; animate on scroll-into-view */
   useEffect(() => {
     if (!bigNumRef.current) return;
+    let fired = false;
     const obs = new IntersectionObserver(entries => {
-      if (!entries[0].isIntersecting) return;
+      if (!entries[0].isIntersecting || fired) return;
+      fired = true;
       let c = 0;
+      setBigNum('0%');
       setTimeout(() => {
         const iv = setInterval(() => { c = Math.min(c + 2, 87); setBigNum(c + '%'); if (c >= 87) clearInterval(iv); }, 28);
-      }, 400);
+      }, 300);
       obs.disconnect();
-    }, { threshold: 0.3 });
+    }, { threshold: 0.2 });
     obs.observe(bigNumRef.current);
     return () => obs.disconnect();
   }, []);
@@ -701,7 +715,7 @@ export default function LandingPage() {
             <span className="ssi-topbar-pill">New</span>
             Elara now corrects Hindi-medium answers in real time
           </div>
-          <button className="ssi-topbar-close" onClick={() => setTopbarOpen(false)} aria-label="Close">✕</button>
+          <button className="ssi-topbar-close" onClick={handleTopbarDismiss} aria-label="Close">✕</button>
         </div>
       )}
 
@@ -1083,7 +1097,7 @@ export default function LandingPage() {
                   <button key={i} className={`ssi-tc-dot${i === tcActive ? ' active' : ''}`} onClick={() => tcGo(i)} aria-label={`Go to testimonial ${i + 1}`} />
                 ))}
               </div>
-              <span className="ssi-tc-auto-label">Auto-advances · 5s</span>
+              <span className="ssi-tc-auto-label" aria-hidden="true" style={{ display: 'none' }}>Auto-advances · 5s</span>
             </div>
           </div>
         </div>
@@ -1198,7 +1212,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link href="/b2b" className="ssi-h-cta ssi-btn-micro" style={{ marginTop: 28, display: 'inline-flex' }} onClick={addRipple}>Talk to us about your batch →</Link>
-              <p className="ssi-b2b-note">B2B plans are launching shortly — reach out now to lock in early-access pricing.</p>
+              <p className="ssi-b2b-note">B2B plans are live — reach out now and we'll onboard your batch this week.</p>
             </div>
             <div>
               <div className="ssi-b2b-card">
