@@ -26,6 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://vachix.in'),
   title: 'Vachix — Say it like you mean it.',
   description:
     'AI-powered English speaking and interview preparation for Indian students and job seekers. Practice real questions for UPSC, Bank PO, SSC, campus placements.',
@@ -38,6 +39,9 @@ export const metadata: Metadata = {
     'hinglish english correction',
     'elara ai coach',
   ],
+  alternates: {
+    canonical: 'https://vachix.in',
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
