@@ -31,10 +31,22 @@ export interface CreateSessionResponse {
   sessions:        number;
   best_score:      number;
   job_ready_score: number;
+  // XP system (migration 023)
+  xp_earned:               number;
+  xp_lifetime:             number;
+  xp_monthly:              number;
+  // Streak freeze (migration 024) — only present when a freeze was consumed
+  streak_freeze_used?:       boolean;
+  streak_freezes_remaining?: number;
   upsell_trigger?: {
     reason:  'post_session' | 'high_score' | 'streak_milestone';
     score?:  number;
     streak?: number;
+  };
+  // Milestone reward — present when a 7/30/60/90 day milestone fires
+  milestone_reward?: {
+    milestone:   number;
+    reward_type: string;
   };
 }
 

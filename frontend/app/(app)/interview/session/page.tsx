@@ -1076,11 +1076,13 @@ function InterviewSessionPageInner() {
         question:    f.question ?? '',
         answer:      f.answer   ?? '',
         score:       f.score    ?? 5,
-        corrections: f.corrections?.map((c) => ({
-          wrong:   c.wrong,
-          correct: c.correct,
-          rule:    c.rule,
-        })),
+        corrections: f.corrections
+          ?.filter((c) => c.wrong != null && c.correct != null)
+          .map((c) => ({
+            wrong:   c.wrong   as string,
+            correct: c.correct as string,
+            rule:    c.rule,
+          })),
       }));
 
       if (config.mode === 'classic' && answerEntries.length > 0) {

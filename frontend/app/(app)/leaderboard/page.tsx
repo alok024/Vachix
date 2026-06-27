@@ -26,7 +26,8 @@ function LockedLeaderboard() {
     <div className="relative">
       {/* Blurred placeholder rows */}
       <Card>
-        <CardBody className="p-0 overflow-hidden" style={{ filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>
+        <CardBody className="p-0 overflow-hidden">
+          <div style={{ filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>
           {[1, 2, 3, 4, 5].map((n) => (
             <div
               key={n}
@@ -50,6 +51,7 @@ function LockedLeaderboard() {
               </div>
             </div>
           ))}
+          </div>
         </CardBody>
       </Card>
       {/* Overlay */}
